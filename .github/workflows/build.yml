@@ -1,0 +1,64 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Get font
+        run: ./scripts/get-fonts.sh
+
+      - name: Test and build
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleRelease 2>&1 | tee build.log
+
+      - name: Name the APK
+        run: cp app/build/outputs/apk/release/app-release.apk reelcut-0.1.${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reelcut-0.1.${{ github.run_number }}
+          path: reelcut-*.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v0.1.${{ github.run_number }}" reelcut-0.1.${{ github.run_number }}.apk \
+            --target "${{ github.sha }}" \
+            --title "Reelcut 0.1.${{ github.run_number }}" \
+            --notes "Built from ${{ github.sha }}" --latest
+
+      # Keeps the latest build log on the ci-log branch so it can be read without signing in.
+      - name: Save build log
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/log"
+          cp build.log "$RUNNER_TEMP/log/" 2>/dev/null || echo "no build log" > "$RUNNER_TEMP/log/build.log"
+          echo "${{ job.status }} ${{ github.sha }} run ${{ github.run_number }}" > "$RUNNER_TEMP/log/status.txt"
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-log-tmp
+          git rm -rf --cached . -q
+          cp "$RUNNER_TEMP"/log/* .
+          git add -f build.log status.txt
+          git commit -q -m "Build log ${{ github.run_number }}"
+          git push -f origin HEAD:ci-log
