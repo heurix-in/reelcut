@@ -39,7 +39,7 @@ object Timeline {
 
     /** Source-file time for a point [offsetUs] into the clip's timeline span. */
     fun sourceTimeUs(clip: Clip, offsetUs: Long): Long =
-        clip.trimStartUs + (offsetUs * clip.speed).toLong()
+        clip.trimStartUs + (offsetUs * clip.effectiveSpeed).toLong()
 
     /** True when [timeUs] is far enough from a clip edge to split there. */
     fun canSplit(clips: List<Clip>, timeUs: Long): Boolean {
@@ -92,6 +92,10 @@ object Timeline {
         if (from == target) return clips
         return clips.toMutableList().apply { add(target, removeAt(from)) }
     }
+
+    /** Replaces clip [index] with [transform] applied to it. */
+    fun update(clips: List<Clip>, index: Int, transform: (Clip) -> Clip): List<Clip> =
+        if (index in clips.indices) clips.toMutableList().apply { set(index, transform(clips[index])) } else clips
 
     fun insert(clips: List<Clip>, at: Int, newClips: List<Clip>): List<Clip> =
         clips.toMutableList().apply { addAll(at.coerceIn(0, clips.size), newClips) }

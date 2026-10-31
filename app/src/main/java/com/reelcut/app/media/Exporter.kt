@@ -14,6 +14,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
 import androidx.media3.transformer.VideoEncoderSettings
+import com.reelcut.app.data.Canvas
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ExportSettings
 import kotlinx.coroutines.CancellationException
@@ -37,6 +38,7 @@ class Exporter(private val context: Context) {
     /** Returns the saved video's content URI. Cancelling the coroutine cancels the export and deletes the partial file. */
     suspend fun export(
         clips: List<Clip>,
+        canvas: Canvas,
         settings: ExportSettings,
         onProgress: (Int) -> Unit,
     ): Uri {
@@ -45,7 +47,7 @@ class Exporter(private val context: Context) {
             delete()
         }
         try {
-            render(clips, settings, out, onProgress)
+            render(clips, canvas, settings, out, onProgress)
             return withContext(Dispatchers.IO) { saveToGallery(out) }
         } finally {
             withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) { out.delete() }
@@ -54,12 +56,13 @@ class Exporter(private val context: Context) {
 
     private suspend fun render(
         clips: List<Clip>,
+        canvas: Canvas,
         settings: ExportSettings,
         out: File,
         onProgress: (Int) -> Unit,
     ) = withContext(Dispatchers.Main) {
-        val composition = CompositionBuilder.exportComposition(clips, settings)
-        val size = CompositionBuilder.outputSize(clips, settings)
+        val composition = CompositionBuilder.exportComposition(clips, canvas, settings)
+        val size = CompositionBuilder.outputSize(clips, canvas, settings)
         val encoderFactory = DefaultEncoderFactory.Builder(context)
             .setRequestedVideoEncoderSettings(
                 VideoEncoderSettings.Builder().setBitrate(CompositionBuilder.bitrate(size, settings)).build()

@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.reelcut.app.data.Canvas
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Quality
@@ -62,6 +63,7 @@ import com.reelcut.app.ui.theme.Type
 @Composable
 fun ExportSheet(
     clips: List<Clip>,
+    canvas: Canvas,
     initial: ExportSettings,
     state: ExportState,
     onExport: (ExportSettings) -> Unit,
@@ -89,7 +91,7 @@ fun ExportSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when (state) {
-                ExportState.Idle -> SettingsContent(clips, initial, onExport)
+                ExportState.Idle -> SettingsContent(clips, canvas, initial, onExport)
                 is ExportState.Running -> RunningContent(state.percent, onCancelExport)
                 is ExportState.Done -> DoneContent(state, onDismiss)
                 is ExportState.Failed -> FailedContent(state.message, onRetry = onReset, onClose = onDismiss)
@@ -99,7 +101,7 @@ fun ExportSheet(
 }
 
 @Composable
-private fun SettingsContent(clips: List<Clip>, initial: ExportSettings, onExport: (ExportSettings) -> Unit) {
+private fun SettingsContent(clips: List<Clip>, canvas: Canvas, initial: ExportSettings, onExport: (ExportSettings) -> Unit) {
     val context = LocalContext.current
     var settings by remember { mutableStateOf(initial) }
     val needsPermission = Build.VERSION.SDK_INT < 29 &&
@@ -127,7 +129,7 @@ private fun SettingsContent(clips: List<Clip>, initial: ExportSettings, onExport
             )
         }
     }
-    val size = CompositionBuilder.outputSize(clips, settings)
+    val size = CompositionBuilder.outputSize(clips, canvas, settings)
     val seconds = Timeline.totalUs(clips) / 1_000_000.0
     val mb = (CompositionBuilder.bitrate(size, settings) + 128_000) * seconds / 8 / 1_000_000
     Text(

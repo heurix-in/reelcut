@@ -4,6 +4,8 @@ A personal, offline Android video editor in the spirit of InShot, with a dark ro
 
 **Phase 1 (this build):** projects list, import videos, full-screen preview, filmstrip timeline (scrub, pinch-zoom, tap to select), trim, split, duplicate, reorder, delete, undo/redo, autosave, and MP4 export (720p/1080p, 30/60 fps) saved to `Movies/Reelcut`, with Play and Share.
 
+**Phase 2:** canvas ratios (9:16, 4:5, 1:1, 16:9) with black or blurred background, photos as clips, speed 0.25×–4×, volume and mute, rotate, mirror, fit/fill.
+
 ## Get the APK
 
 Every push to `main` builds on GitHub Actions. The APK appears under **Releases** as `reelcut-0.1.<n>.apk`. All builds share one signing key, so a new APK installs over the old one and keeps your projects.

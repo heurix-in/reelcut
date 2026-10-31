@@ -29,7 +29,7 @@ sealed interface ExportState {
     data class Failed(val message: String) : ExportState
 }
 
-enum class Mode { Edit, Trim, Reorder }
+enum class Mode { Edit, Trim, Reorder, Speed, Volume, Transform, Canvas, Duration }
 
 /**
  * Holds the open project and every edit made to it. Each edit makes a new immutable Project;
@@ -234,6 +234,10 @@ class EditorViewModel(private val app: Application, private val projectId: Strin
     fun startTrim() {
         val i = targetIndex()
         val clip = _project.value?.clips?.getOrNull(i) ?: return
+        if (clip.isPhoto) {
+            openPanel(Mode.Duration)
+            return
+        }
         preview.pause()
         trimIndex = i
         _selectedId.value = clip.id
@@ -286,6 +290,83 @@ class EditorViewModel(private val app: Application, private val projectId: Strin
         preview.exitSource(clips, _playheadUs.value)
     }
 
+    // ---------- Panels: Speed, Volume, Transform, Canvas, Duration ----------
+    // Changes show live while a panel is open and become a single undo step on Done.
+
+    private var panelSnapshot: Project? = null
+    private var panelIndex = -1
+
+    fun panelClip(): Clip? = _project.value?.clips?.getOrNull(panelIndex)
+
+    fun openPanel(mode: Mode) {
+        val p = _project.value ?: return
+        val i = targetIndex()
+        if (mode != Mode.Canvas && i < 0) return
+        preview.pause()
+        panelIndex = i
+        panelSnapshot = p
+        if (i >= 0) {
+            _selectedId.value = p.clips[i].id
+            seek(Timeline.startsUs(p.clips)[i], exact = true)
+        }
+        _mode.value = mode
+    }
+
+    private fun stage(transform: (Project) -> Project) {
+        val p = _project.value ?: return
+        val next = transform(p)
+        if (next == p) return
+        _project.value = next
+        if (_playheadUs.value > next.durationUs) _playheadUs.value = next.durationUs
+        if (_missing.value.isEmpty()) preview.setClips(next.clips, _playheadUs.value)
+    }
+
+    /** Changes the clip the open panel is for. */
+    fun stageClip(transform: (Clip) -> Clip) =
+        stage { p -> p.copy(clips = Timeline.update(p.clips, panelIndex, transform)) }
+
+    /** Changes every clip (the "apply to all" buttons). */
+    fun stageAll(transform: (Clip) -> Clip) = stage { p -> p.copy(clips = p.clips.map(transform)) }
+
+    fun stageCanvas(transform: (com.reelcut.app.data.Canvas) -> com.reelcut.app.data.Canvas) =
+        stage { p -> p.copy(canvas = transform(p.canvas)) }
+
+    fun setSpeed(speed: Float) = stageClip {
+        it.copy(speed = speed.coerceIn(Clip.MIN_SPEED, Clip.MAX_SPEED))
+    }
+
+    fun setVolume(volume: Float) = stageClip { it.copy(volume = volume.coerceIn(0f, Clip.MAX_VOLUME)) }
+
+    fun setPhotoDuration(durationUs: Long) = stageClip {
+        val d = durationUs.coerceIn(Timeline.MIN_CLIP_US, Clip.MAX_PHOTO_US - it.trimStartUs)
+        it.copy(trimEndUs = it.trimStartUs + d)
+    }
+
+    fun rotate() = stageClip { it.copy(rotation = (it.rotation + 90) % 360) }
+
+    fun flip() = stageClip { it.copy(flipH = !it.flipH) }
+
+    fun setFill(fill: Boolean) = stageClip { it.copy(fill = fill) }
+
+    fun closePanel(apply: Boolean) {
+        val before = panelSnapshot
+        panelSnapshot = null
+        panelIndex = -1
+        _mode.value = Mode.Edit
+        val now = _project.value ?: return
+        if (before == null) return
+        if (!apply) {
+            stage { before }
+            return
+        }
+        if (now != before) {
+            undoStack.addLast(before)
+            if (undoStack.size > 50) undoStack.removeFirst()
+            redoStack.clear()
+            apply(now.copy(updatedAt = System.currentTimeMillis()))
+        }
+    }
+
     // ---------- Reorder mode ----------
 
     fun startReorder() {
@@ -307,7 +388,7 @@ class EditorViewModel(private val app: Application, private val projectId: Strin
         _export.value = ExportState.Running(0)
         exportJob = viewModelScope.launch {
             _export.value = try {
-                val uri = exporter.export(p.clips, settings) { pct ->
+                val uri = exporter.export(p.clips, p.canvas, settings) { pct ->
                     _export.value = ExportState.Running(pct.coerceIn(0, 100))
                 }
                 ExportState.Done(uri)

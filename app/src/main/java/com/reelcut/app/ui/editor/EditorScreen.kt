@@ -1,7 +1,6 @@
 package com.reelcut.app.ui.editor
 
 import android.app.Application
-import android.graphics.Color as AndroidColor
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,6 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +38,10 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Redo
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.CropRotate
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentCut
@@ -68,12 +73,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.common.Player
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import com.reelcut.app.data.Timeline
 import com.reelcut.app.editor.EditorViewModel
 import com.reelcut.app.editor.ExportState
 import com.reelcut.app.editor.Mode
@@ -105,6 +107,7 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
     val canRedo by vm.canRedo.collectAsStateWithLifecycle()
     val exportState by vm.export.collectAsStateWithLifecycle()
     val trimRange by vm.trimRange.collectAsStateWithLifecycle()
+    val currentIndex by vm.preview.currentIndex.collectAsStateWithLifecycle()
 
     var dpPerSecond by rememberSaveable { mutableFloatStateOf(56f) }
     var renaming by remember { mutableStateOf(false) }
@@ -123,21 +126,25 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         if (uris.isNotEmpty()) {
             vm.addClips(uris, at = insertAt.takeIf { it >= 0 }) { added ->
-                hint = if (added == 0) "Those videos could not be opened" else if (added == 1) "Clip added" else "$added clips added"
+                hint = if (added == 0) "Those files could not be opened" else if (added == 1) "Clip added" else "$added clips added"
             }
         }
         insertAt = -1
     }
-    val pickVideos = { at: Int ->
+    fun launchPicker(at: Int, type: ActivityResultContracts.PickVisualMedia.VisualMediaType) {
         insertAt = at
         addMenu = false
-        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+        picker.launch(PickVisualMediaRequest(type))
     }
+    val pickVideos = { at: Int -> launchPicker(at, ActivityResultContracts.PickVisualMedia.ImageAndVideo) }
+    val pickVideosOnly = { at: Int -> launchPicker(at, ActivityResultContracts.PickVisualMedia.VideoOnly) }
+    val pickPhotos = { at: Int -> launchPicker(at, ActivityResultContracts.PickVisualMedia.ImageOnly) }
 
     when (mode) {
         Mode.Trim -> BackHandler { vm.finishTrim(apply = false) }
         Mode.Reorder -> BackHandler { vm.finishReorder() }
         Mode.Edit -> Unit
+        else -> BackHandler { vm.closePanel(apply = false) }
     }
 
     if (loadFailed) {
@@ -164,17 +171,29 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
             .background(Color.Black)
     ) {
         // ---- Preview, full bleed ----
-        VideoSurface(
-            vm.preview.player,
-            Modifier
+        val trimClip = if (mode == Mode.Trim) vm.trimClip() else null
+        val shownClip = trimClip ?: p.clips.getOrNull(currentIndex)
+        val shownSourceUs = shownClip?.let { c ->
+            val pos = Timeline.locate(p.clips, playheadUs)
+            if (pos != null && p.clips[pos.index].id == c.id) Timeline.sourceTimeUs(c, pos.offsetUs) else c.trimStartUs
+        } ?: 0L
+        CanvasPreview(
+            player = vm.preview.player,
+            clips = p.clips,
+            canvas = p.canvas,
+            current = shownClip,
+            sourceTimeUs = shownSourceUs,
+            trimMode = mode == Mode.Trim,
+            thumbs = vm.thumbnails,
+            modifier = Modifier
                 .fillMaxSize()
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                     when (mode) {
                         Mode.Edit -> vm.togglePlay()
                         Mode.Trim -> vm.toggleTrimPlay()
-                        Mode.Reorder -> Unit
+                        else -> vm.togglePlay()
                     }
-                }
+                },
         )
         if (!isPlaying && p.clips.isNotEmpty() && mode == Mode.Edit) {
             Box(
@@ -192,7 +211,7 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("No clips yet", style = Type.Title)
                 Spacer(Modifier.height(12.dp))
-                AccentButton("Add videos", { pickVideos(0) })
+                AccentButton("Add videos or photos", { pickVideos(0) })
             }
         }
         // Soft scrims so floating controls stay readable on bright video.
@@ -265,14 +284,19 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
             Column(
                 Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = 8.dp),
+                    .padding(start = 8.dp, top = 72.dp, bottom = 200.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                RailButton(Icons.Rounded.AspectRatio, "Canvas") { vm.openPanel(Mode.Canvas) }
                 RailButton(Icons.Rounded.SettingsEthernet, "Trim") { vm.startTrim() }
                 RailButton(Icons.Rounded.ContentCut, "Split", enabled = vm.canSplit()) {
                     vm.split()
                     hint = "Split at ${formatTime(playheadUs, tenths = true)}"
                 }
+                RailButton(Icons.Rounded.Speed, "Speed") { vm.openPanel(Mode.Speed) }
+                RailButton(Icons.Rounded.VolumeUp, "Volume") { vm.openPanel(Mode.Volume) }
+                RailButton(Icons.Rounded.CropRotate, "Rotate, mirror, fit") { vm.openPanel(Mode.Transform) }
                 RailButton(Icons.Rounded.ContentCopy, "Duplicate") {
                     vm.duplicateTarget()
                     hint = "Clip duplicated"
@@ -310,8 +334,8 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
                                     .padding(6.dp),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                BlobButton(Icons.Rounded.Image, "Photo") { hint = "Photos arrive in phase 2"; addMenu = false }
-                                BlobButton(Icons.Rounded.Videocam, "Video") { pickVideos(p.clips.size) }
+                                BlobButton(Icons.Rounded.Image, "Photo") { pickPhotos(p.clips.size) }
+                                BlobButton(Icons.Rounded.Videocam, "Video") { pickVideosOnly(p.clips.size) }
                                 BlobButton(Icons.Rounded.AutoAwesome, "Effects") { hint = "Effects arrive in phase 5"; addMenu = false }
                             }
                         }
@@ -388,6 +412,65 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
                     onMove = vm::move,
                     onDone = vm::finishReorder,
                 )
+
+                Mode.Speed -> vm.panelClip()?.let { clip ->
+                    if (clip.isPhoto) {
+                        LaunchedEffect(Unit) {
+                            hint = "Photos play at normal speed"
+                            vm.closePanel(apply = false)
+                        }
+                    } else {
+                        SpeedPanel(
+                            clip = clip,
+                            onSpeed = vm::setSpeed,
+                            onApplyAll = { vm.stageAll { c -> c.copy(speed = clip.speed) }; hint = "Speed applied to all clips" },
+                            onCancel = { vm.closePanel(apply = false) },
+                            onDone = { vm.closePanel(apply = true) },
+                        )
+                    }
+                }
+
+                Mode.Volume -> vm.panelClip()?.let { clip ->
+                    VolumePanel(
+                        clip = clip,
+                        onVolume = vm::setVolume,
+                        onApplyAll = { vm.stageAll { c -> c.copy(volume = clip.volume) }; hint = "Volume applied to all clips" },
+                        onCancel = { vm.closePanel(apply = false) },
+                        onDone = { vm.closePanel(apply = true) },
+                    )
+                }
+
+                Mode.Transform -> vm.panelClip()?.let { clip ->
+                    TransformPanel(
+                        clip = clip,
+                        onRotate = vm::rotate,
+                        onFlip = vm::flip,
+                        onFill = vm::setFill,
+                        onApplyAll = {
+                            vm.stageAll { c -> c.copy(rotation = clip.rotation, flipH = clip.flipH, fill = clip.fill) }
+                            hint = "Applied to all clips"
+                        },
+                        onCancel = { vm.closePanel(apply = false) },
+                        onDone = { vm.closePanel(apply = true) },
+                    )
+                }
+
+                Mode.Canvas -> CanvasPanel(
+                    canvas = p.canvas,
+                    onAspect = { a -> vm.stageCanvas { it.copy(aspect = a) } },
+                    onBlur = { b -> vm.stageCanvas { it.copy(blurBackground = b) } },
+                    onCancel = { vm.closePanel(apply = false) },
+                    onDone = { vm.closePanel(apply = true) },
+                )
+
+                Mode.Duration -> vm.panelClip()?.let { clip ->
+                    DurationPanel(
+                        clip = clip,
+                        onDuration = vm::setPhotoDuration,
+                        onCancel = { vm.closePanel(apply = false) },
+                        onDone = { vm.closePanel(apply = true) },
+                    )
+                }
             }
         }
     }
@@ -412,6 +495,7 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
     if (showExport) {
         ExportSheet(
             clips = p.clips,
+            canvas = p.canvas,
             initial = p.export,
             state = exportState,
             onExport = vm::startExport,
@@ -447,22 +531,4 @@ private fun BlobButton(icon: ImageVector, label: String, onClick: () -> Unit) {
     ) {
         Icon(icon, label, tint = Palette.Ink, modifier = Modifier.size(20.dp))
     }
-}
-
-@Composable
-private fun VideoSurface(player: Player, modifier: Modifier = Modifier) {
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                useController = false
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                setShutterBackgroundColor(AndroidColor.BLACK)
-                setKeepContentOnPlayerReset(true)
-                this.player = player
-            }
-        },
-        update = { it.player = player },
-        onRelease = { it.player = null },
-    )
 }

@@ -36,10 +36,13 @@ class ThumbnailCache(private val context: Context) {
     /** Rounds to half a second so nearby requests share one frame. */
     fun quantize(timeUs: Long): Long = (timeUs / STEP_US) * STEP_US
 
-    fun peek(uri: String, timeUs: Long, heightPx: Int): ImageBitmap? = memory.get(key(uri, quantize(timeUs), heightPx))
+    fun peek(uri: String, timeUs: Long, heightPx: Int): ImageBitmap? = memory.get(key(uri, timeKey(uri, timeUs), heightPx))
+
+    /** Photos use one frame for every time. */
+    private fun timeKey(uri: String, timeUs: Long): Long = if (imageUris[uri] == true) 0L else quantize(timeUs)
 
     suspend fun get(uri: String, timeUs: Long, heightPx: Int): ImageBitmap? {
-        val t = quantize(timeUs)
+        val t = timeKey(uri, timeUs)
         val k = key(uri, t, heightPx)
         memory.get(k)?.let { return it }
         return withContext(Dispatchers.IO) {
@@ -49,7 +52,23 @@ class ThumbnailCache(private val context: Context) {
         }
     }
 
-    private fun decode(uri: String, timeUs: Long, heightPx: Int): ImageBitmap? = try {
+    private val imageUris = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    private fun decode(uri: String, timeUs: Long, heightPx: Int): ImageBitmap? {
+        val isImage = imageUris.getOrPut(uri) { MediaProbe.isImage(context, Uri.parse(uri)) }
+        return if (isImage) decodePhoto(uri, heightPx) else decodeVideo(uri, timeUs, heightPx)
+    }
+
+    /** Photos look the same at every time, so one frame per size is cached. */
+    private fun decodePhoto(uri: String, heightPx: Int): ImageBitmap? {
+        val bmp = MediaProbe.decodePhoto(context, Uri.parse(uri), heightPx * 2) ?: return null
+        val outW = (bmp.width.toLong() * heightPx / bmp.height).toInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(bmp, outW, heightPx, true)
+        if (scaled !== bmp) bmp.recycle()
+        return scaled.asImageBitmap()
+    }
+
+    private fun decodeVideo(uri: String, timeUs: Long, heightPx: Int): ImageBitmap? = try {
         val r = retrievers.getOrPut(uri) {
             MediaMetadataRetriever().apply { setDataSource(context, Uri.parse(uri)) }
         }

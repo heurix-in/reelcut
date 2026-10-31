@@ -105,7 +105,7 @@ fun HomeScreen(onOpen: (String) -> Unit) {
             val clips = MediaProbe.clipsFrom(context, uris)
             if (clips.isEmpty()) {
                 importing = false
-                Toast.makeText(context, "Those videos could not be opened.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Those files could not be opened.", Toast.LENGTH_LONG).show()
                 return@launch
             }
             val now = System.currentTimeMillis()
@@ -121,7 +121,7 @@ fun HomeScreen(onOpen: (String) -> Unit) {
             onOpen(project.id)
         }
     }
-    val newVideo = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) }
+    val newVideo = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) }
 
     Box(
         Modifier

@@ -8,8 +8,17 @@
 - Undo/redo (50 steps), autosave 500 ms after each edit
 - Export sheet: 720p/1080p, 30/60 fps, quality; progress, cancel, saved to Movies/Reelcut, Play/Share
 
+## Done – Phase 2 (canvas & speed)
+- Canvas tool: Original, 9:16, 4:5, 1:1, 16:9; black or blurred background (preview matches export framing)
+- Photos as clips (picked with videos), with a length panel (0.1–30 s)
+- Speed 0.25×–4× per clip with presets, slider and "apply to all"; timeline badges
+- Volume 0–200% and mute per clip ("apply to all"); above 100% is heard on export only
+- Frame tool: rotate 90°, mirror, fit/fill
+- Panel edits preview live and land as one undo step on Done; Cancel restores
+
 ## Known gaps / next
 - Import uses the system picker instead of a custom in-app grid (keeps the app permission-free)
 - Light theme not done yet (dark only)
 - Preview may show a brief hitch at clip joins; export is seamless
-- Phase 2: canvas ratios, background blur, photos as clips, speed, volume
+- Solid colour backgrounds (only black and blur so far)
+- Phase 3: text and stickers on a multi-track timeline

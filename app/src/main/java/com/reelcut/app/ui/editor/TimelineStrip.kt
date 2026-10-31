@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -285,6 +286,23 @@ private fun ClipView(
                     Modifier
                         .fillMaxSize()
                         .border(2.dp, Palette.Accent, Shape.ClipPill)
+                )
+            }
+            val badge = buildList {
+                if (!clip.isPhoto && clip.speed != 1f) add("${clip.speed}×".replace(".0×", "×"))
+                if (!clip.isPhoto && clip.volume == 0f) add("muted")
+                if (clip.isPhoto) add("photo")
+            }.joinToString(" · ")
+            if (badge.isNotEmpty() && widthPx > 60f) {
+                Text(
+                    badge,
+                    style = Type.Small,
+                    color = Palette.Ink,
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .clip(Shape.Pill)
+                        .background(Palette.Accent)
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
             }
         }

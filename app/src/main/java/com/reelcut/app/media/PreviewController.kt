@@ -1,17 +1,25 @@
 package com.reelcut.app.media
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.exoplayer.image.ImageOutput
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.Timeline
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Plays the edit as a playlist of trimmed clips and converts between player position and
- * timeline time. In trim mode it plays the whole source file of one clip instead.
+ * timeline time. Speed and volume are applied per clip as the playlist moves on; framing
+ * (canvas, rotation, fit/fill) is drawn by the Compose layer around the player view.
+ * In trim mode it plays the whole source file of one clip instead.
  */
 class PreviewController(context: Context) {
 
@@ -21,30 +29,78 @@ class PreviewController(context: Context) {
 
     private var clips: List<Clip> = emptyList()
     private var starts: LongArray = LongArray(0)
+    private var structure: List<Any> = emptyList()
     private var sourceMode = false
 
-    /** Loads [newClips] and keeps the playhead at [keepTimeUs]. Does nothing if the clips did not change. */
+    /** Index of the clip the player is on, for the Compose framing. */
+    private val _currentIndex = MutableStateFlow(0)
+    val currentIndex: StateFlow<Int> = _currentIndex.asStateFlow()
+
+    /** Last photo frame handed over by the player (photos are drawn by Compose). */
+    private val _photoFrame = MutableStateFlow<Bitmap?>(null)
+    val photoFrame: StateFlow<Bitmap?> = _photoFrame.asStateFlow()
+
+    init {
+        player.setImageOutput(object : ImageOutput {
+            override fun onImageAvailable(presentationTimeUs: Long, bitmap: Bitmap) {
+                _photoFrame.value = bitmap
+            }
+
+            override fun onDisabled() = Unit
+        })
+        player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                applyClipParams()
+            }
+        })
+    }
+
+    private fun applyClipParams() {
+        if (sourceMode) return
+        val i = player.currentMediaItemIndex
+        _currentIndex.value = i
+        val clip = clips.getOrNull(i) ?: return
+        player.playbackParameters = PlaybackParameters(clip.effectiveSpeed)
+        player.volume = clip.volume.coerceIn(0f, 1f)
+    }
+
+    /** What needs a playlist reload when it changes (speed, volume and framing do not). */
+    private fun structureOf(list: List<Clip>): List<Any> =
+        list.map { listOf(it.id, it.sourceUri, it.trimStartUs, it.trimEndUs, it.kind) }
+
+    /** Loads [newClips] and keeps the playhead at [keepTimeUs]. Reloads only when the cut itself changed. */
     fun setClips(newClips: List<Clip>, keepTimeUs: Long, force: Boolean = false) {
-        if (!force && !sourceMode && newClips == clips) return
+        val newStructure = structureOf(newClips)
+        val reload = force || sourceMode || newStructure != structure
         sourceMode = false
         clips = newClips
         starts = Timeline.startsUs(newClips)
+        structure = newStructure
+        if (!reload) {
+            applyClipParams()
+            return
+        }
         val wasPlaying = player.playWhenReady
         if (newClips.isEmpty()) {
             player.clearMediaItems()
             return
         }
         val pos = Timeline.locate(newClips, keepTimeUs)!!
-        player.setMediaItems(CompositionBuilder.previewItems(newClips), pos.index, pos.offsetUs / 1000)
+        player.setMediaItems(CompositionBuilder.previewItems(newClips), pos.index, mediaMs(newClips[pos.index], pos.offsetUs))
         player.prepare()
         player.playWhenReady = wasPlaying
+        applyClipParams()
     }
+
+    /** Timeline offset inside a clip to the player's position inside that item. */
+    private fun mediaMs(clip: Clip, offsetUs: Long): Long = (offsetUs * clip.effectiveSpeed / 1000).toLong()
 
     /** Current timeline time in microseconds. */
     fun positionUs(): Long {
         if (sourceMode || clips.isEmpty()) return 0L
         val i = player.currentMediaItemIndex.coerceIn(0, clips.lastIndex)
-        val inClip = (player.currentPosition * 1000).coerceIn(0L, clips[i].durationUs)
+        val clip = clips[i]
+        val inClip = (player.currentPosition * 1000 / clip.effectiveSpeed).toLong().coerceIn(0L, clip.durationUs)
         return starts[i] + inClip
     }
 
@@ -52,7 +108,7 @@ class PreviewController(context: Context) {
         if (sourceMode) return
         val pos = Timeline.locate(clips, timeUs) ?: return
         player.setSeekParameters(if (exact) SeekParameters.EXACT else SeekParameters.CLOSEST_SYNC)
-        player.seekTo(pos.index, pos.offsetUs / 1000)
+        player.seekTo(pos.index, mediaMs(clips[pos.index], pos.offsetUs))
     }
 
     val isPlaying: Boolean get() = player.playWhenReady
@@ -71,6 +127,8 @@ class PreviewController(context: Context) {
     fun enterSource(clip: Clip, atUs: Long) {
         sourceMode = true
         player.pause()
+        player.playbackParameters = PlaybackParameters(1f)
+        player.volume = 1f
         player.setMediaItem(MediaItem.fromUri(Uri.parse(clip.sourceUri)), atUs / 1000)
         player.prepare()
     }
