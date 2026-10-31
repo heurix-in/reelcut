@@ -322,7 +322,7 @@ fun EditorScreen(projectId: String, onBack: () -> Unit) {
                 Mode.Edit -> if (p.clips.isNotEmpty()) {
                     // Add menu: a yellow blob that grows out of the "+".
                     Box(Modifier.fillMaxWidth().padding(end = 12.dp), contentAlignment = Alignment.CenterEnd) {
-                        AnimatedVisibility(
+                        androidx.compose.animation.AnimatedVisibility(
                             visible = addMenu,
                             enter = scaleIn(spring(dampingRatio = 0.6f, stiffness = 500f), transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)) + fadeIn(),
                             exit = scaleOut(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)) + fadeOut(),
