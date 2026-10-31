@@ -22,3 +22,10 @@
 - Preview may show a brief hitch at clip joins; export is seamless
 - Solid colour backgrounds (only black and blur so far)
 - Phase 3: text and stickers on a multi-track timeline
+
+## Decisions (31 Oct 2026) – not started yet, waiting for go-ahead
+1. One shared app for Android and Windows (Compose Multiplatform): shared UI, timeline and project code;
+   Media3 engine on Android, bundled FFmpeg engine on Windows; CI builds the APK and a Windows .exe per release.
+2. Stage A layout follows InShot (video on top, playback row, labelled bottom toolbar that changes with
+   selection, ruler timeline, Mute Clip) but keeps the dark + yellow Gixlo colours.
+3. Order after Stage A: text & logo, then audio, then filters & animations.
