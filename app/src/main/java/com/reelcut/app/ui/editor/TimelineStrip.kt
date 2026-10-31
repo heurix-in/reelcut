@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -241,6 +242,9 @@ private fun ClipView(
     Box(
         Modifier
             .offset { IntOffset(xPx.roundToInt(), topPx) }
+            // Long clips are wider than the screen: let the box keep its real width
+            // (pinned to its left edge) instead of being squeezed to the strip width.
+            .wrapContentSize(Alignment.TopStart, unbounded = true)
             .size(with(density) { widthPx.toDp() }, with(density) { heightPx.toDp() })
             .clip(Shape.ClipPill)
             .background(if (missing) Palette.Danger.copy(alpha = 0.5f) else Palette.Stone)
@@ -351,7 +355,7 @@ fun TimeChips(
         itemsIndexed(clips, key = { _, c -> c.id }) { i, c ->
             val start = starts[i]
             Pill(
-                text = "${formatTime(start)} · · · ${formatTime(start + c.durationUs)}",
+                text = "${chipTime(start)} · · · ${chipTime(start + c.durationUs)}",
                 selected = i == current,
                 selectedColor = Palette.Accent,
                 onClick = { onJump(start) },
@@ -361,3 +365,6 @@ fun TimeChips(
         }
     }
 }
+
+/** Whole seconds, but tenths when a value is under 10 s so short clips don't read "0:00 · · · 0:00". */
+private fun chipTime(us: Long): String = if (us < 10_000_000L) formatTime(us, tenths = true) else formatTime(us)
