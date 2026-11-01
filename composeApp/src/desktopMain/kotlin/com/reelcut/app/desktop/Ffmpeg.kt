@@ -42,6 +42,7 @@ object Ffmpeg {
     private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif", "heic", "heif")
     val videoExtensions = setOf("mp4", "mov", "m4v", "mkv", "webm", "avi", "3gp", "wmv", "mts", "m2ts", "ts", "flv")
     val mediaExtensions = imageExtensions + videoExtensions
+    val audioExtensions = setOf("mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "flac", "wma", "aiff", "aif", "amr")
 
     fun isImage(path: String): Boolean = File(path).extension.lowercase() in imageExtensions
 
@@ -71,6 +72,19 @@ object Ffmpeg {
                 hasAudio = g.hasAudio() && g.audioChannels > 0,
                 rotation = rot,
             )
+        } finally {
+            runCatching { g.close() }
+        }
+    }.getOrNull()
+
+    /** Length in microseconds of a sound file, or null if it has no playable sound. */
+    fun probeAudioUs(path: String): Long? = runCatching {
+        init()
+        val g = FFmpegFrameGrabber(path)
+        try {
+            g.start()
+            if (!g.hasAudio() || g.audioChannels <= 0) return@runCatching null
+            g.lengthInTime.takeIf { it > 0 }
         } finally {
             runCatching { g.close() }
         }

@@ -3,6 +3,7 @@ package com.reelcut.app.engine
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import com.reelcut.app.data.AudioClip
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Project
@@ -21,6 +22,12 @@ interface MediaEngine {
 
     /** Turns picked files into clips. Unreadable files are skipped. */
     suspend fun importClips(refs: List<String>): List<Clip>
+
+    /** Turns picked sound files into audio clips (placed at 0:00; the caller moves them). Unreadable files are skipped. */
+    suspend fun importAudio(refs: List<String>): List<AudioClip>
+
+    /** A new microphone recorder for voice-overs. */
+    fun newRecorder(): VoiceRecorder
 
     /** True if the source file can still be opened. */
     fun isReadable(ref: String): Boolean
@@ -53,6 +60,21 @@ interface MediaEngine {
     fun shareVideo(ref: String)
 }
 
+/** Records the microphone to a file the project keeps. One recorder per recording. */
+interface VoiceRecorder {
+    /** Starts recording. False if the microphone could not be used. */
+    fun start(): Boolean
+
+    /** How long it has been recording. */
+    val elapsedUs: Long
+
+    /** Stops and returns the saved recording named [name], or null if it was too short or failed. */
+    suspend fun stop(name: String): AudioClip?
+
+    /** Stops and throws the recording away. */
+    fun cancel()
+}
+
 /** A full-frame transparent image shown between [startUs] and [endUs] of the timeline. */
 class OverlayLayer(val image: ImageBitmap, val startUs: Long, val endUs: Long)
 
@@ -80,6 +102,9 @@ interface PreviewPlayer {
 
     fun setClips(clips: List<Clip>, keepTimeUs: Long, force: Boolean = false)
     fun setMuted(muted: Boolean)
+
+    /** The music and voice-overs heard along with the video (already cut to the video's length). */
+    fun setAudio(clips: List<AudioClip>)
     fun positionUs(): Long
     fun seekTo(timeUs: Long, exact: Boolean)
     fun play()

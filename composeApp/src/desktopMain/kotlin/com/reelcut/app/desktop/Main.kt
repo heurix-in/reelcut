@@ -26,7 +26,7 @@ fun main() {
         ?: File(System.getProperty("user.home"), ".reelcut")
     Services.current = Services(
         repository = ProjectRepository(FileProjectStore(File(dataDir, "projects"))),
-        engine = DesktopMediaEngine(),
+        engine = DesktopMediaEngine(File(dataDir, "voice")),
         appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
     )
     // Load FFmpeg in the background so the first import is quick.

@@ -2,6 +2,8 @@ package com.reelcut.app.desktop
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import com.reelcut.app.data.AudioClip
+import com.reelcut.app.data.AudioKind
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ClipKind
 import com.reelcut.app.data.ExportSettings
@@ -11,6 +13,7 @@ import com.reelcut.app.engine.MediaEngine
 import com.reelcut.app.engine.OverlayLayer
 import com.reelcut.app.engine.PreviewPlayer
 import com.reelcut.app.engine.Thumbnails
+import com.reelcut.app.engine.VoiceRecorder
 import com.reelcut.app.newId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,7 +24,7 @@ import java.io.File
 import javax.imageio.ImageIO
 
 /** Windows: FFmpeg for import, preview and export; videos are saved in Videos\Reelcut. */
-class DesktopMediaEngine : MediaEngine {
+class DesktopMediaEngine(private val voiceDir: File) : MediaEngine {
 
     override val thumbnails: Thumbnails = DesktopThumbnails()
     private val exporter = FfmpegExporter()
@@ -62,6 +65,25 @@ class DesktopMediaEngine : MediaEngine {
             }
         }
     }
+
+    override suspend fun importAudio(refs: List<String>): List<AudioClip> = withContext(Dispatchers.IO) {
+        refs.mapNotNull { path ->
+            val file = File(path)
+            if (!file.canRead()) return@mapNotNull null
+            val dur = Ffmpeg.probeAudioUs(path) ?: return@mapNotNull null
+            if (dur < AudioClip.MIN_US) return@mapNotNull null
+            AudioClip(
+                id = newId(),
+                kind = AudioKind.MUSIC,
+                name = file.nameWithoutExtension.ifBlank { "Audio" }.take(60),
+                sourceUri = file.absolutePath,
+                sourceDurationUs = dur,
+                trimEndUs = dur,
+            )
+        }
+    }
+
+    override fun newRecorder(): VoiceRecorder = DesktopVoiceRecorder(voiceDir)
 
     override fun isReadable(ref: String): Boolean = File(ref).canRead()
 

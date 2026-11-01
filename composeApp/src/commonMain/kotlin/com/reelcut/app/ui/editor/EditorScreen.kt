@@ -79,7 +79,9 @@ import com.reelcut.app.editor.EditorViewModel
 import com.reelcut.app.editor.ExportState
 import com.reelcut.app.editor.Mode
 import com.reelcut.app.engine.Services
+import com.reelcut.app.rememberAudioPicker
 import com.reelcut.app.rememberMediaPicker
+import com.reelcut.app.rememberMicPermission
 import com.reelcut.app.ui.components.AccentButton
 import com.reelcut.app.ui.components.ConfirmDialog
 import com.reelcut.app.ui.components.Pill
@@ -112,6 +114,8 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
     val exportState by vm.export.collectAsState()
     val trimRange by vm.trimRange.collectAsState()
     val selectedOverlayId by vm.selectedOverlayId.collectAsState()
+    val selectedAudioId by vm.selectedAudioId.collectAsState()
+    val recordingUs by vm.recordingUs.collectAsState()
     val measurer = rememberTextMeasurer(cacheSize = 16)
     val currentIndex by vm.preview.currentIndex.collectAsState()
 
@@ -143,6 +147,26 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
     val addMedia = { at: Int, filter: MediaFilter ->
         insertAt = at
         pick(filter)
+    }
+
+    val pickAudio = rememberAudioPicker { refs ->
+        if (refs.isNotEmpty()) {
+            vm.addAudio(refs) { added ->
+                hint = when (added) {
+                    0 -> "That sound could not be opened"
+                    1 -> "Sound added at the playhead"
+                    else -> "$added sounds added"
+                }
+            }
+        }
+    }
+    val withMic = rememberMicPermission()
+    val toggleRecording = {
+        if (recordingUs != null) {
+            vm.stopRecording { saved -> if (!saved) hint = "That recording was too short" }
+        } else {
+            withMic { if (!vm.startRecording()) hint = "The microphone could not be opened" }
+        }
     }
 
     val pickLogo = rememberMediaPicker { refs ->
@@ -330,7 +354,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                             tools = listOf(
                                 Tool(Icons.Rounded.AspectRatio, "Canvas", enabled = p.clips.isNotEmpty()) { vm.openPanel(Mode.Canvas) },
                                 Tool(Icons.Rounded.TextFields, "Text", enabled = p.clips.isNotEmpty()) { vm.addText() },
-                                Tool(Icons.Rounded.MusicNote, "Audio", soon = true) { soon("Audio") },
+                                Tool(Icons.Rounded.MusicNote, "Audio", enabled = p.clips.isNotEmpty()) { vm.openAudio() },
                                 Tool(Icons.Rounded.Image, "Logo", enabled = p.clips.isNotEmpty()) { pickLogo(MediaFilter.Photo) },
                                 Tool(Icons.Rounded.AutoAwesome, "Filter", soon = true) { soon("Filter") },
                                 Tool(Icons.Rounded.SwapHoriz, "Reorder", enabled = p.clips.size > 1) { vm.startReorder() },
@@ -350,6 +374,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                             onAdd = { addMedia(vm.insertIndexAtPlayhead(), MediaFilter.All) },
                             onInsertAt = { addMedia(it, MediaFilter.All) },
                             onMuteToggled = { muted -> hint = if (muted) "Clip sound muted" else "Clip sound on" },
+                            selectedAudioId = selectedAudioId,
                         )
                     }
                 }
@@ -446,6 +471,24 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                     }
                 }
 
+                Mode.Audio -> AudioPanel(
+                    audio = p.audio,
+                    selected = p.audio.firstOrNull { it.id == selectedAudioId },
+                    muteOriginal = p.muteOriginal,
+                    playheadUs = playheadUs,
+                    totalUs = p.durationUs,
+                    recordingUs = recordingUs,
+                    onAddMusic = { pickAudio() },
+                    onRecord = toggleRecording,
+                    onSelect = vm::selectAudio,
+                    onChange = vm::stageSelectedAudio,
+                    onSeek = { vm.seek(it, exact = true) },
+                    onDelete = vm::deleteSelectedAudio,
+                    onToggleMuteOriginal = vm::stageMuteOriginal,
+                    onCancel = { vm.closePanel(apply = false) },
+                    onDone = { vm.closePanel(apply = true) },
+                )
+
                 Mode.Duration -> vm.panelClip()?.let { clip ->
                     DurationPanel(
                         clip = clip,
@@ -525,6 +568,7 @@ private fun TimelineArea(
     onAdd: () -> Unit,
     onInsertAt: (Int) -> Unit,
     onMuteToggled: (Boolean) -> Unit,
+    selectedAudioId: String?,
 ) {
     Box(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth()) {
@@ -542,6 +586,9 @@ private fun TimelineArea(
                 overlays = project.overlays,
                 selectedOverlayId = null,
                 onSelectOverlay = vm::editOverlay,
+                audio = project.audio,
+                selectedAudioId = selectedAudioId,
+                onSelectAudio = vm::editAudio,
                 onInsertAt = onInsertAt,
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -21,6 +21,14 @@ enum class MediaFilter { All, Video, Photo }
 @Composable
 expect fun rememberMediaPicker(onPicked: (List<String>) -> Unit): (MediaFilter) -> Unit
 
+/** Returns a function that opens the system picker for sound files; [onPicked] gets the chosen files. */
+@Composable
+expect fun rememberAudioPicker(onPicked: (List<String>) -> Unit): () -> Unit
+
+/** Returns a function that runs its argument once the microphone may be used (asks on Android). */
+@Composable
+expect fun rememberMicPermission(): (onGranted: () -> Unit) -> Unit
+
 /** System back (Android). Does nothing on Windows. */
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)

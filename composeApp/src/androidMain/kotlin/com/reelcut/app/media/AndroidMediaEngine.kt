@@ -18,8 +18,10 @@ import com.reelcut.app.engine.MediaEngine
 import com.reelcut.app.engine.OverlayLayer
 import com.reelcut.app.engine.PreviewPlayer
 import com.reelcut.app.engine.Thumbnails
+import com.reelcut.app.engine.VoiceRecorder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /** Android: Media3 for preview and export, MediaStore for saving to the gallery. */
 class AndroidMediaEngine(private val context: Context) : MediaEngine {
@@ -29,6 +31,10 @@ class AndroidMediaEngine(private val context: Context) : MediaEngine {
     private val exporter = Exporter(context)
 
     override suspend fun importClips(refs: List<String>) = MediaProbe.clipsFrom(context, refs)
+
+    override suspend fun importAudio(refs: List<String>) = MediaProbe.audioFrom(context, refs)
+
+    override fun newRecorder(): VoiceRecorder = AndroidVoiceRecorder(context, File(context.filesDir, "voice"))
 
     override fun isReadable(ref: String): Boolean = MediaProbe.isReadable(context, ref)
 
@@ -41,7 +47,9 @@ class AndroidMediaEngine(private val context: Context) : MediaEngine {
         onProgress: (Int) -> Unit,
     ): String {
         val androidLayers = layers.map { CompositionBuilder.Layer(it.image.asAndroidBitmap(), it.startUs, it.endUs) }
-        return exporter.export(project.clips, project.canvas, project.muteOriginal, settings, androidLayers, onProgress).toString()
+        return exporter.export(
+            project.clips, project.canvas, project.muteOriginal, settings, androidLayers, project.audio, onProgress,
+        ).toString()
     }
 
     override suspend fun loadImage(ref: String, maxSide: Int): ImageBitmap? = withContext(Dispatchers.IO) {

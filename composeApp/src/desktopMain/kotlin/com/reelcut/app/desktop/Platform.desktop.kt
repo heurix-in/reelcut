@@ -45,6 +45,28 @@ actual fun rememberMediaPicker(onPicked: (List<String>) -> Unit): (MediaFilter) 
     }
 }
 
+/** The Windows file picker for music and other sound files. */
+@Composable
+actual fun rememberAudioPicker(onPicked: (List<String>) -> Unit): () -> Unit = remember {
+    {
+        val exts = Ffmpeg.audioExtensions
+        val dialog = FileDialog(null as Frame?, "Add music or sound", FileDialog.LOAD).apply {
+            isMultipleMode = true
+            file = exts.joinToString(";") { "*.$it" }
+            setFilenameFilter { _, name -> File(name).extension.lowercase() in exts }
+        }
+        dialog.isVisible = true
+        val picked = dialog.files?.map { it.absolutePath }.orEmpty()
+            .filter { File(it).extension.lowercase() in exts }
+        dialog.dispose()
+        onPicked(picked)
+    }
+}
+
+/** Windows asks for microphone access itself the first time one is opened. */
+@Composable
+actual fun rememberMicPermission(): (onGranted: () -> Unit) -> Unit = remember { { onGranted: () -> Unit -> onGranted() } }
+
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit
 

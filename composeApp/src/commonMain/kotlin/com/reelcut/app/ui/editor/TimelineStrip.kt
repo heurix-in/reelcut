@@ -46,6 +46,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.reelcut.app.data.AudioClip
+import com.reelcut.app.data.AudioMath
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.Overlay
 import com.reelcut.app.data.OverlayMath
@@ -90,10 +92,19 @@ fun TimelineStrip(
     overlays: List<Overlay> = emptyList(),
     selectedOverlayId: String? = null,
     onSelectOverlay: (Overlay) -> Unit = {},
+    audio: List<AudioClip> = emptyList(),
+    selectedAudioId: String? = null,
+    onSelectAudio: (AudioClip) -> Unit = {},
 ) {
     val density = LocalDensity.current
     val lanes = remember(overlays) { OverlayMath.lanes(overlays) }
     val laneCount = (lanes.values.maxOrNull() ?: -1) + 1
+    val audioLanes = remember(audio) { AudioMath.lanes(audio) }
+    val audioLaneCount = (audioLanes.values.maxOrNull() ?: -1) + 1
+    val audioState = rememberUpdatedState(audio)
+    val audioLanesState = rememberUpdatedState(audioLanes)
+    val laneCountState = rememberUpdatedState(laneCount)
+    val onSelectAudioState = rememberUpdatedState(onSelectAudio)
     val overlaysState = rememberUpdatedState(overlays)
     val lanesState = rememberUpdatedState(lanes)
     val onSelectOverlayState = rememberUpdatedState(onSelectOverlay)
@@ -113,7 +124,7 @@ fun TimelineStrip(
 
     BoxWithConstraints(
         modifier
-            .height(StripHeight + LaneHeight * laneCount)
+            .height(StripHeight + LaneHeight * (laneCount + audioLaneCount))
             .clipToBounds()
             // Mouse wheel (Windows): zoom the timeline.
             .pointerInput(Unit) {
@@ -183,9 +194,16 @@ fun TimelineStrip(
                         if (down.position.y > stripPx) {
                             // Tap on an overlay bar.
                             val lane = ((down.position.y - stripPx) / LaneHeight.toPx()).toInt()
-                            overlaysState.value.firstOrNull { o ->
-                                lanesState.value[o.id] == lane && t in o.startUs..o.endUs
-                            }?.let { onSelectOverlayState.value(it) }
+                            val textLanes = laneCountState.value
+                            if (lane < textLanes) {
+                                overlaysState.value.firstOrNull { o ->
+                                    lanesState.value[o.id] == lane && t in o.startUs..o.endUs
+                                }?.let { onSelectOverlayState.value(it) }
+                            } else {
+                                audioState.value.firstOrNull { a ->
+                                    audioLanesState.value[a.id] == lane - textLanes && t in a.startUs..a.endUs
+                                }?.let { onSelectAudioState.value(it) }
+                            }
                             return@awaitEachGesture
                         }
                         // Tap: select the clip under the finger.
@@ -268,6 +286,35 @@ fun TimelineStrip(
                         if (o.isText) "T  " + o.text.ifBlank { "Text" }.replace('\n', ' ') else "Logo",
                         style = Type.Small,
                         color = if (o.isText) Palette.Ink else Palette.White,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+
+        // Music and voice-over bars below the text bars. Anything past the video's end is not heard, so not drawn.
+        audio.forEach { a ->
+            val lane = audioLanes[a.id] ?: return@forEach
+            val x = centre + (a.startUs - playheadUs) * pxPerUs
+            val w = ((min(a.endUs, total) - a.startUs) * pxPerUs).coerceAtLeast(0f)
+            if (w <= 0f || x + w < -40f || x > widthPx + 40f) return@forEach
+            key(a.id) {
+                val sel = a.id == selectedAudioId
+                Box(
+                    Modifier
+                        .offset { IntOffset(x.roundToInt(), (stripPx + (laneCount + lane) * laneH + 2.dp.toPx()).roundToInt()) }
+                        .wrapContentSize(Alignment.TopStart, unbounded = true)
+                        .size(with(density) { w.toDp() }, LaneHeight - 4.dp)
+                        .clip(Shape.Pill)
+                        .background(if (a.isVoice) Palette.Danger else Palette.Cream)
+                        .then(if (sel) Modifier.border(2.dp, Palette.White, Shape.Pill) else Modifier)
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        (if (a.isVoice) "Voice  " else "Music  ") + a.name.replace('\n', ' '),
+                        style = Type.Small,
+                        color = Palette.Ink,
                         maxLines = 1,
                     )
                 }

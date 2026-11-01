@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
 import com.reelcut.app.R
+import com.reelcut.app.data.AudioClip
 import com.reelcut.app.data.Clip
 import com.reelcut.app.engine.PreviewPlayer
 import com.reelcut.app.data.Timeline
@@ -44,6 +45,11 @@ class AndroidPreviewPlayer(context: Context) : PreviewPlayer {
     override val currentIndex: StateFlow<Int> = _currentIndex.asStateFlow()
 
     private var muted = false
+
+    /** Music and voice-overs, kept in step with this player's timeline time. */
+    private val audio = AndroidAudioPreview(context, timeUs = { positionUs() }, isPlaying = { !sourceMode && isPlaying })
+
+    override fun setAudio(clips: List<AudioClip>) = audio.setClips(clips)
 
     /** Last photo frame handed over by the player (photos are drawn by Compose). */
     private val _photoFrame = MutableStateFlow<Bitmap?>(null)
@@ -143,6 +149,7 @@ class AndroidPreviewPlayer(context: Context) : PreviewPlayer {
     override fun enterSource(clip: Clip, atUs: Long) {
         sourceMode = true
         player.pause()
+        audio.pauseAll()
         player.playbackParameters = PlaybackParameters(1f)
         player.volume = 1f
         player.setMediaItem(MediaItem.fromUri(Uri.parse(clip.sourceUri)), atUs / 1000)
@@ -178,5 +185,8 @@ class AndroidPreviewPlayer(context: Context) : PreviewPlayer {
         )
     }
 
-    override fun release() = player.release()
+    override fun release() {
+        audio.release()
+        player.release()
+    }
 }

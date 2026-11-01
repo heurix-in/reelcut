@@ -14,6 +14,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
 import androidx.media3.transformer.VideoEncoderSettings
+import com.reelcut.app.data.AudioClip
 import com.reelcut.app.data.Canvas
 import com.reelcut.app.engine.ExportFailed
 import com.reelcut.app.data.Clip
@@ -41,6 +42,7 @@ class Exporter(private val context: Context) {
         muteOriginal: Boolean,
         settings: ExportSettings,
         layers: List<CompositionBuilder.Layer>,
+        audio: List<AudioClip>,
         onProgress: (Int) -> Unit,
     ): Uri {
         val out = File(context.cacheDir, "export/render.mp4").apply {
@@ -48,10 +50,13 @@ class Exporter(private val context: Context) {
             delete()
         }
         try {
-            render(clips, canvas, muteOriginal, settings, layers, out, onProgress)
+            render(clips, canvas, muteOriginal, settings, layers, audio, out, onProgress)
             return withContext(Dispatchers.IO) { saveToGallery(out) }
         } finally {
-            withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) { out.delete() }
+            withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                out.delete()
+                File(context.cacheDir, "export/audio").deleteRecursively()
+            }
         }
     }
 
@@ -61,10 +66,14 @@ class Exporter(private val context: Context) {
         muteOriginal: Boolean,
         settings: ExportSettings,
         layers: List<CompositionBuilder.Layer>,
+        audio: List<AudioClip>,
         out: File,
         onProgress: (Int) -> Unit,
     ) = withContext(Dispatchers.Main) {
-        val composition = CompositionBuilder.exportComposition(clips, canvas, settings, muteOriginal, layers)
+        val tempDir = File(context.cacheDir, "export/audio")
+        val composition = CompositionBuilder.exportComposition(
+            clips, canvas, settings, muteOriginal, layers, audio, tempDir,
+        )
         val size = CompositionBuilder.outputSize(clips, canvas, settings)
         val encoderFactory = DefaultEncoderFactory.Builder(context)
             .setRequestedVideoEncoderSettings(

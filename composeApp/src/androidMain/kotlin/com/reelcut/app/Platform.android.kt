@@ -47,6 +47,37 @@ actual fun rememberMediaPicker(onPicked: (List<String>) -> Unit): (MediaFilter) 
 }
 
 @Composable
+actual fun rememberAudioPicker(onPicked: (List<String>) -> Unit): () -> Unit {
+    // The document picker (not the photo picker) lists sound files; the app keeps read access afterwards.
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        onPicked(uris.map { it.toString() })
+    }
+    return remember(launcher) { { launcher.launch(arrayOf("audio/*")) } }
+}
+
+@Composable
+actual fun rememberMicPermission(): (onGranted: () -> Unit) -> Unit {
+    val context = LocalContext.current
+    val holder = remember { arrayOfNulls<() -> Unit>(1) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) holder[0]?.invoke()
+        holder[0] = null
+    }
+    return remember(launcher) {
+        { onGranted: () -> Unit ->
+            val allowed = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+            if (allowed) {
+                onGranted()
+            } else {
+                holder[0] = onGranted
+                launcher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
+}
+
+@Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = BackHandler(enabled, onBack)
 
 @Composable

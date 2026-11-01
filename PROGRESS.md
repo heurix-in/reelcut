@@ -33,12 +33,25 @@
 - One drawing routine for preview and export; Android burns layers in with Media3 overlays,
   Windows with ffmpeg overlay
 
+## Done – Audio (1 Nov 2026, release v0.2.8)
+- Audio tool: add music from the phone/PC (several files at once), record a voice-over, switch the video's own sound on/off
+- Voice-over: the video plays silently from the playhead while the microphone records; stops at the end of the video
+  or with Stop; Android asks for microphone permission on first use
+- Per sound: volume 0–200%, fade in / fade out, cut from start / end, start position (playhead); delete
+- Bars under the timeline (cream = music, coral = voice), tap one to edit; sounds past the end of the video are cut
+- Preview mixes the sounds with the video (Android: one player per sound; Windows: one sound line per sound);
+  export mixes them in (Android: Media3 audio sequences with a silent WAV for delays and a fade/volume processor;
+  Windows: ffmpeg afade/volume/adelay/amix with a limiter)
+- Project schema 4 (`audio` list; older projects open unchanged)
+
 ## Known gaps / next
 - Import uses the system picker instead of a custom in-app grid (keeps the app permission-free)
 - Light theme not done yet (dark only)
 - Preview may show a brief hitch at clip joins; export is seamless
 - Windows preview: sped-up clips play silent (sound follows speed on export); photos ignore EXIF rotation
-- Next: Audio (music from device, voice-over, volume, fade), then filters and animations
+- Next: cloud sync (see below), then filters and animations
+- Audio: boosts above 100% are heard on export only; recorded voice files are not deleted with their project yet;
+  no waveform on the bars yet; no "extract sound from a video" yet
 
 ## Decisions (31 Oct 2026)
 1. One shared app for Android and Windows (Compose Multiplatform): shared UI, timeline and project code;

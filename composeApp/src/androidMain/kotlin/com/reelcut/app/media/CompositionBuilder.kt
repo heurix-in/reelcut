@@ -25,11 +25,14 @@ import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
+import com.reelcut.app.data.AudioClip
+import com.reelcut.app.data.AudioMath
 import com.reelcut.app.data.Canvas
 import com.reelcut.app.data.CanvasMath
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Quality
+import java.io.File
 
 /**
  * Turns the Project's clips into Media3 objects. Preview and export both start from
@@ -71,17 +74,70 @@ object CompositionBuilder {
         settings: ExportSettings,
         muteOriginal: Boolean = false,
         layers: List<Layer> = emptyList(),
+        audio: List<AudioClip> = emptyList(),
+        tempDir: File? = null,
     ): Composition {
         val size = outputSize(clips, canvas, settings)
         val starts = com.reelcut.app.data.Timeline.startsUs(clips)
         val items = clips.mapIndexed { i, clip ->
             editedItem(clip, canvas, settings, size, muteOriginal, layers, starts[i])
         }
-        return Composition.Builder(EditedMediaItemSequence(items))
+        val sequences = mutableListOf(EditedMediaItemSequence(items))
+        if (audio.isNotEmpty() && tempDir != null) sequences += audioSequences(audio, tempDir)
+        return Composition.Builder(sequences)
             // Clips with no sound (and photos) get silence, so mixed clips join cleanly.
             .experimentalSetForceAudioTrack(true)
             .build()
     }
+
+    /**
+     * Music and voice-overs, mixed with the video's sound by Transformer. Sounds that overlap each
+     * other go in separate sequences; inside a sequence a stretch of silence (a small WAV file)
+     * stands in for the wait before each sound starts.
+     */
+    private fun audioSequences(audio: List<AudioClip>, tempDir: File): List<EditedMediaItemSequence> {
+        tempDir.mkdirs()
+        val lanes = AudioMath.lanes(audio)
+        var silenceCount = 0
+        return audio.groupBy { lanes[it.id] ?: 0 }.toSortedMap().values.map { lane ->
+            var cursorUs = 0L
+            val items = mutableListOf<EditedMediaItem>()
+            lane.sortedBy { it.startUs }.forEach { c ->
+                val gapUs = c.startUs - cursorUs
+                if (gapUs > MIN_GAP_US) {
+                    val wav = File(tempDir, "silence${silenceCount++}.wav")
+                    SilenceWav.write(wav, gapUs)
+                    items += EditedMediaItem.Builder(MediaItem.fromUri(Uri.fromFile(wav)))
+                        .setRemoveVideo(true)
+                        .build()
+                }
+                items += audioItem(c)
+                cursorUs = c.endUs
+            }
+            EditedMediaItemSequence(items)
+        }
+    }
+
+    private fun audioItem(c: AudioClip): EditedMediaItem {
+        val mediaItem = MediaItem.Builder()
+            .setUri(Uri.parse(c.sourceUri))
+            .setMediaId(c.id)
+            .setClippingConfiguration(
+                MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(c.trimStartUs / 1000)
+                    .setEndPositionMs(c.trimEndUs / 1000)
+                    .build()
+            )
+            .build()
+        val processors = mutableListOf<AudioProcessor>()
+        if (c.volume != 1f || c.fadeInUs > 0 || c.fadeOutUs > 0) processors += FadeVolumeProcessor(c)
+        return EditedMediaItem.Builder(mediaItem)
+            .setRemoveVideo(true)
+            .setEffects(Effects(processors, emptyList()))
+            .build()
+    }
+
+    private const val MIN_GAP_US = 10_000L
 
     private fun editedItem(
         clip: Clip,

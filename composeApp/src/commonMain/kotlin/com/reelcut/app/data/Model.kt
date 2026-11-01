@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class Project(
-    val schemaVersion: Int = 3,
+    val schemaVersion: Int = 4,
     val id: String,
     val name: String,
     val createdAt: Long,
@@ -21,6 +21,8 @@ data class Project(
     val muteOriginal: Boolean = false,
     /** Text and logos drawn over the video, in drawing order (last on top). */
     val overlays: List<Overlay> = emptyList(),
+    /** Music and voice-overs mixed with the video's own sound. */
+    val audio: List<AudioClip> = emptyList(),
 ) {
     val durationUs: Long get() = Timeline.totalUs(clips)
 }

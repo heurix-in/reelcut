@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import com.reelcut.app.data.AudioClip
+import com.reelcut.app.data.AudioMath
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.Timeline
 import com.reelcut.app.engine.PreviewPlayer
@@ -71,6 +73,10 @@ class DesktopPreviewPlayer : PreviewPlayer {
     private val audioThread = Executors.newSingleThreadExecutor { r -> Thread(r, "preview-audio").apply { isDaemon = true } }
     private val converter = Java2DFrameConverter()
 
+    /** Music and voice-overs; each plays on its own thread and sound line, on the same clock. */
+    @Volatile private var audioClips: List<AudioClip> = emptyList()
+    private val musicPool = Executors.newCachedThreadPool { r -> Thread(r, "preview-music").apply { isDaemon = true } }
+
     /** Open decoder for still frames while scrubbing, reused for seeks in the same file. */
     private var stillGrabber: FFmpegFrameGrabber? = null
     private var stillPath: String? = null
@@ -125,6 +131,13 @@ class DesktopPreviewPlayer : PreviewPlayer {
         this.muted = muted
     }
 
+    override fun setAudio(clips: List<AudioClip>) {
+        if (clips == audioClips) return
+        audioClips = clips
+        // Playing: restart from here so the new mix is heard straight away.
+        if (playing && !sourceMode) seekInternal(now())
+    }
+
     // ---------------- Clock ----------------
 
     private fun now(): Long =
@@ -168,6 +181,11 @@ class DesktopPreviewPlayer : PreviewPlayer {
         playing = true
         videoThread.execute { runCatching { videoLoop(gen, start) } }
         audioThread.execute { runCatching { audioLoop(gen, start) } }
+        if (!sourceMode) {
+            audioClips.filter { it.endUs > start }.forEach { c ->
+                musicPool.execute { runCatching { musicLoop(gen, c, start) } }
+            }
+        }
     }
 
     override fun pause() {
@@ -215,6 +233,7 @@ class DesktopPreviewPlayer : PreviewPlayer {
         }
         videoThread.shutdown()
         audioThread.shutdown()
+        musicPool.shutdown()
     }
 
     @Composable
@@ -372,6 +391,59 @@ class DesktopPreviewPlayer : PreviewPlayer {
                 if (i < list.size) from = list[i].timelineStartUs
             }
         } finally {
+            runCatching {
+                line.stop()
+                line.flush()
+                line.close()
+            }
+        }
+    }
+
+    /** Plays one music/voice clip from timeline time [fromUs] (or its own start, if later). */
+    private fun musicLoop(gen: Long, clip: AudioClip, fromUs: Long) {
+        Ffmpeg.init()
+        val format = AudioFormat(SAMPLE_RATE.toFloat(), 16, 2, true, false)
+        val line: SourceDataLine = runCatching {
+            (AudioSystem.getLine(javax.sound.sampled.DataLine.Info(SourceDataLine::class.java, format)) as SourceDataLine)
+                .apply { open(format, SAMPLE_RATE / 5 * 4) }
+        }.getOrNull() ?: return
+        val g = FFmpegFrameGrabber(clip.sourceUri)
+        try {
+            g.sampleRate = SAMPLE_RATE
+            g.audioChannels = 2
+            g.sampleFormat = avutil.AV_SAMPLE_FMT_S16
+            g.start()
+            val beginUs = maxOf(fromUs, clip.startUs)
+            g.setAudioTimestamp(clip.trimStartUs + (beginUs - clip.startUs))
+            // Line up with the clock before writing the first samples.
+            if (!waitUntil(gen, beginUs)) return
+            line.start()
+            var framesWritten = 0L
+            var bytes = ByteArray(0)
+            while (alive(gen)) {
+                val f = g.grabSamples() ?: break
+                if (g.timestamp >= clip.trimEndUs) break
+                val buf = f.samples?.firstOrNull() as? ShortBuffer ?: continue
+                val n = buf.remaining()
+                val frames = n / 2
+                if (frames == 0) continue
+                if (bytes.size < n * 2) bytes = ByteArray(n * 2)
+                // Preview is capped at 100%; the gain ramps smoothly across each block.
+                val t0 = beginUs + framesWritten * 1_000_000L / SAMPLE_RATE
+                val t1 = beginUs + (framesWritten + frames) * 1_000_000L / SAMPLE_RATE
+                val g0 = AudioMath.gain(clip, t0).coerceIn(0f, 1f)
+                val g1 = AudioMath.gain(clip, t1 - 1).coerceIn(0f, 1f)
+                val bb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                for (k in 0 until n) {
+                    val gain = g0 + (g1 - g0) * ((k / 2).toFloat() / frames)
+                    bb.putShort((buf.get(buf.position() + k) * gain).roundToInt().toShort())
+                }
+                line.write(bytes, 0, n * 2)
+                framesWritten += frames
+            }
+        } catch (_: Throwable) {
+        } finally {
+            runCatching { g.close() }
             runCatching {
                 line.stop()
                 line.flush()

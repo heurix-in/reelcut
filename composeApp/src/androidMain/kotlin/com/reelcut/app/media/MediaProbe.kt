@@ -8,6 +8,9 @@ import android.graphics.Matrix
 import android.media.ExifInterface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.OpenableColumns
+import com.reelcut.app.data.AudioClip
+import com.reelcut.app.data.AudioKind
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ClipKind
 import com.reelcut.app.data.ProjectRepository
@@ -120,6 +123,49 @@ object MediaProbe {
                     mimeType = mime,
                 )
             }
+        }
+    }
+
+    /** Name shown for a picked file: its display name without the extension. */
+    private fun displayName(context: Context, uri: Uri): String {
+        val raw = runCatching {
+            context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull() ?: uri.lastPathSegment ?: "Audio"
+        return raw.substringBeforeLast('.', raw).ifBlank { "Audio" }.take(60)
+    }
+
+    /** Duration in microseconds of a sound file, or null if it can't be played or has no sound. */
+    fun audioDurationUs(context: Context, uri: Uri): Long? {
+        val r = MediaMetadataRetriever()
+        return try {
+            r.setDataSource(context, uri)
+            if (r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) != "yes") return null
+            r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.times(1000)
+        } catch (e: Exception) {
+            null
+        } finally {
+            runCatching { r.release() }
+        }
+    }
+
+    /** Turns picked sound files into audio clips, keeping read access across restarts. Unreadable files are skipped. */
+    suspend fun audioFrom(context: Context, refs: List<String>): List<AudioClip> = withContext(Dispatchers.IO) {
+        refs.map(Uri::parse).mapNotNull { uri ->
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val dur = audioDurationUs(context, uri) ?: return@mapNotNull null
+            if (dur < AudioClip.MIN_US) return@mapNotNull null
+            AudioClip(
+                id = ProjectRepository.newId(),
+                kind = AudioKind.MUSIC,
+                name = displayName(context, uri),
+                sourceUri = uri.toString(),
+                sourceDurationUs = dur,
+                trimEndUs = dur,
+            )
         }
     }
 

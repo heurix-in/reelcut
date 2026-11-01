@@ -187,8 +187,36 @@ class FfmpegExporter {
         }
         graph.append(";[$current]format=yuv420p[outv]")
 
+        // Music and voice-overs: trimmed, shaped (volume, fades), delayed to their start and mixed
+        // under the video's own sound. The mix ends with the video's sound track.
+        var audioOut = "outa"
+        if (project.audio.isNotEmpty()) {
+            val mixInputs = StringBuilder("[outa]")
+            project.audio.forEachIndexed { k, a ->
+                val idx = input++
+                args += listOf("-ss", num(a.trimStartUs / 1e6), "-t", num(a.durationUs / 1e6), "-i", a.sourceUri)
+                val seconds = a.durationUs / 1e6
+                val chain = StringBuilder("[$idx:a]asetpts=PTS-STARTPTS")
+                chain.append(",aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo")
+                if (a.volume != 1f) chain.append(",volume=${num(a.volume.toDouble())}")
+                if (a.fadeInUs > 0) chain.append(",afade=t=in:st=0:d=${num(a.fadeInUs / 1e6)}")
+                if (a.fadeOutUs > 0) {
+                    chain.append(",afade=t=out:st=${num((seconds - a.fadeOutUs / 1e6).coerceAtLeast(0.0))}:d=${num(a.fadeOutUs / 1e6)}")
+                }
+                val ms = a.startUs / 1000
+                if (ms > 0) chain.append(",adelay=$ms|$ms")
+                chain.append("[m$k]")
+                graph.append(';').append(chain)
+                mixInputs.append("[m$k]")
+            }
+            graph.append(';').append(mixInputs)
+            graph.append("amix=inputs=${project.audio.size + 1}:duration=first:normalize=0:dropout_transition=0")
+            graph.append(",alimiter=limit=0.98:level=0[mixa]")
+            audioOut = "mixa"
+        }
+
         val bitrate = CanvasMath.bitrate(size, settings)
-        args += listOf("-filter_complex", graph.toString(), "-map", "[outv]", "-map", "[outa]")
+        args += listOf("-filter_complex", graph.toString(), "-map", "[outv]", "-map", "[$audioOut]")
         args += listOf("-c:v", encoder, "-b:v", "$bitrate")
         if (encoder == "libx264") {
             args += listOf("-preset", "veryfast", "-maxrate", "${bitrate * 3 / 2}", "-bufsize", "${bitrate * 2}", "-profile:v", "high")

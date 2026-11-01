@@ -2,6 +2,8 @@ package com.reelcut.app.editor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reelcut.app.data.AudioClip
+import com.reelcut.app.data.AudioMath
 import com.reelcut.app.data.Canvas
 import com.reelcut.app.data.CanvasMath
 import com.reelcut.app.data.Overlay
@@ -15,6 +17,7 @@ import com.reelcut.app.data.Timeline
 import com.reelcut.app.engine.ExportFailed
 import com.reelcut.app.engine.OverlayLayer
 import com.reelcut.app.engine.Services
+import com.reelcut.app.engine.VoiceRecorder
 import com.reelcut.app.nowMillis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +36,7 @@ sealed interface ExportState {
     data class Failed(val message: String) : ExportState
 }
 
-enum class Mode { Edit, Trim, Reorder, Speed, Volume, Transform, Canvas, Duration, Text, Logo }
+enum class Mode { Edit, Trim, Reorder, Speed, Volume, Transform, Canvas, Duration, Text, Logo, Audio }
 
 /**
  * Holds the open project and every edit made to it. Each edit makes a new immutable Project;
@@ -72,6 +75,16 @@ class EditorViewModel(private val services: Services, private val projectId: Str
     private var overlayIsNew = false
     val isNewOverlay: Boolean get() = overlayIsNew
 
+    /** The music or voice-over being edited in the Audio panel. */
+    private val _selectedAudioId = MutableStateFlow<String?>(null)
+    val selectedAudioId: StateFlow<String?> = _selectedAudioId.asStateFlow()
+
+    /** Voice-over in progress: how long it has been recording, or null. */
+    private val _recordingUs = MutableStateFlow<Long?>(null)
+    val recordingUs: StateFlow<Long?> = _recordingUs.asStateFlow()
+    private var recorder: VoiceRecorder? = null
+    private var recordStartUs = 0L
+
     private val _mode = MutableStateFlow(Mode.Edit)
     val mode: StateFlow<Mode> = _mode.asStateFlow()
 
@@ -100,7 +113,7 @@ class EditorViewModel(private val services: Services, private val projectId: Str
                 p.clips.filterNot { engine.isReadable(it.sourceUri) }.map { it.id }.toSet()
             }
             _project.value = p
-            preview.setMuted(p.muteOriginal)
+            syncPreviewAudio(p)
             if (_missing.value.isEmpty()) preview.setClips(p.clips, 0L)
             refreshUndoFlags()
         }
@@ -111,6 +124,11 @@ class EditorViewModel(private val services: Services, private val projectId: Str
                     _playheadUs.value = preview.positionUs()
                 }
                 _isPlaying.value = playing
+                recorder?.let { r ->
+                    _recordingUs.value = r.elapsedUs
+                    // The video reached its end: that ends the voice-over too.
+                    if (!playing && r.elapsedUs > 600_000L) stopRecording()
+                }
                 delay(33)
             }
         }
@@ -133,10 +151,17 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         val total = next.durationUs
         if (_playheadUs.value > total) _playheadUs.value = total
         if (_selectedId.value != null && next.clips.none { it.id == _selectedId.value }) _selectedId.value = null
-        preview.setMuted(next.muteOriginal)
+        syncPreviewAudio(next)
         if (_mode.value != Mode.Trim && _missing.value.isEmpty()) preview.setClips(next.clips, _playheadUs.value)
         refreshUndoFlags()
         scheduleSave()
+    }
+
+    /** Tells the preview which sounds to play: none of them while a voice-over is being recorded. */
+    private fun syncPreviewAudio(p: Project) {
+        val recording = recorder != null
+        preview.setMuted(p.muteOriginal || recording)
+        preview.setAudio(if (recording) emptyList() else AudioMath.fit(p.audio, p.durationUs))
     }
 
     private fun refreshUndoFlags() {
@@ -349,6 +374,7 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         if (next == p) return
         _project.value = next
         if (_playheadUs.value > next.durationUs) _playheadUs.value = next.durationUs
+        syncPreviewAudio(next)
         if (_missing.value.isEmpty()) preview.setClips(next.clips, _playheadUs.value)
     }
 
@@ -379,6 +405,8 @@ class EditorViewModel(private val services: Services, private val projectId: Str
     fun setFill(fill: Boolean) = stageClip { it.copy(fill = fill) }
 
     fun closePanel(apply: Boolean) {
+        if (recorder != null) cancelRecording()
+        _selectedAudioId.value = null
         // An empty new text box is not worth keeping.
         val overlayId = _selectedOverlayId.value
         if (apply && overlayId != null) {
@@ -484,6 +512,116 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         closePanel(apply = true)
     }
 
+    // ---------- Audio: music and voice-over ----------
+
+    /** Opens the Audio panel (on one sound, if [selectId] is given). */
+    fun openAudio(selectId: String? = null) {
+        val p = _project.value ?: return
+        if (p.clips.isEmpty()) return
+        preview.pause()
+        panelSnapshot = p
+        panelIndex = -1
+        _selectedId.value = null
+        _selectedAudioId.value = selectId
+        _mode.value = Mode.Audio
+    }
+
+    /** A bar under the timeline was tapped. */
+    fun editAudio(c: AudioClip) {
+        when (_mode.value) {
+            Mode.Audio -> _selectedAudioId.value = c.id
+            Mode.Edit -> openAudio(c.id)
+            else -> Unit
+        }
+    }
+
+    fun selectAudio(id: String?) {
+        _selectedAudioId.value = id
+    }
+
+    /** Adds picked sound files at the playhead, one after the other. */
+    fun addAudio(refs: List<String>, onDone: (added: Int) -> Unit) {
+        viewModelScope.launch {
+            val p = _project.value ?: return@launch
+            val imported = engine.importAudio(refs)
+            if (imported.isNotEmpty()) {
+                var at = AudioMath.placeAt(_playheadUs.value, p.durationUs)
+                val placed = imported.map { c ->
+                    AudioMath.normalise(c.copy(startUs = at), p.durationUs).also { at = it.endUs }
+                }
+                stage { it.copy(audio = it.audio + placed) }
+                _selectedAudioId.value = placed.first().id
+            }
+            onDone(imported.size)
+        }
+    }
+
+    fun stageSelectedAudio(transform: (AudioClip) -> AudioClip) {
+        val id = _selectedAudioId.value ?: return
+        val total = _project.value?.durationUs ?: 0L
+        stage { p ->
+            p.copy(audio = p.audio.map { if (it.id == id) AudioMath.normalise(transform(it), total) else it })
+        }
+    }
+
+    fun deleteSelectedAudio() {
+        val id = _selectedAudioId.value ?: return
+        stage { p -> p.copy(audio = p.audio.filterNot { it.id == id }) }
+        _selectedAudioId.value = null
+    }
+
+    /** Switches the video clips' own sound on or off (part of the open panel's edit). */
+    fun stageMuteOriginal() = stage { it.copy(muteOriginal = !it.muteOriginal) }
+
+    /**
+     * Starts a voice-over: the video plays from the playhead (its sound and the music are silenced)
+     * while the microphone records. Returns false if the microphone couldn't be opened.
+     */
+    fun startRecording(): Boolean {
+        val p = _project.value ?: return false
+        if (recorder != null || p.clips.isEmpty()) return false
+        preview.pause()
+        if (_playheadUs.value >= p.durationUs - 50_000) seek(0L, exact = true)
+        val r = engine.newRecorder()
+        if (!r.start()) return false
+        recorder = r
+        recordStartUs = _playheadUs.value
+        _recordingUs.value = 0L
+        syncPreviewAudio(p)
+        preview.play()
+        return true
+    }
+
+    /** Ends the voice-over and adds it at the point where recording began. */
+    fun stopRecording(onResult: (saved: Boolean) -> Unit = {}) {
+        val r = recorder ?: return
+        recorder = null
+        _recordingUs.value = null
+        preview.pause()
+        val startUs = recordStartUs
+        viewModelScope.launch {
+            val number = (_project.value?.audio?.count { it.isVoice } ?: 0) + 1
+            val clip = r.stop("Voice $number")
+            val p = _project.value
+            if (clip != null && p != null) {
+                val placed = AudioMath.normalise(clip.copy(startUs = startUs), p.durationUs)
+                stage { it.copy(audio = it.audio + placed) }
+                _selectedAudioId.value = placed.id
+            }
+            _project.value?.let(::syncPreviewAudio)
+            onResult(clip != null)
+        }
+    }
+
+    fun cancelRecording() {
+        val r = recorder ?: return
+        recorder = null
+        _recordingUs.value = null
+        preview.pause()
+        r.cancel()
+        _project.value?.let(::syncPreviewAudio)
+    }
+
     // ---------- Reorder mode ----------
 
     fun startReorder() {
@@ -505,10 +643,16 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         if (p.clips.isEmpty() || _export.value is ExportState.Running) return
         preview.pause()
         if (p.export != settings) commit { it.copy(export = settings) }
-        val toExport = _project.value ?: p
+        val edited = _project.value ?: p
         _export.value = ExportState.Running(0)
         exportJob = viewModelScope.launch {
             _export.value = try {
+                // Only sounds that can still be opened, cut to the video's length.
+                val toExport = withContext(Dispatchers.Default) {
+                    edited.copy(
+                        audio = AudioMath.fit(edited.audio.filter { engine.isReadable(it.sourceUri) }, edited.durationUs),
+                    )
+                }
                 val size = CanvasMath.outputSize(toExport.clips, toExport.canvas, settings.height)
                 val layers = withContext(Dispatchers.Default) {
                     renderLayers(toExport.overlays, size.width, size.height)
@@ -540,6 +684,7 @@ class EditorViewModel(private val services: Services, private val projectId: Str
     override fun onCleared() {
         tickJob?.cancel()
         exportJob?.cancel()
+        recorder?.cancel()
         // Save immediately; the scope is going away.
         _project.value?.let { p ->
             services.appScope.launch { repo.save(p) }
