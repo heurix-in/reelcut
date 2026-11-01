@@ -27,8 +27,19 @@ interface MediaEngine {
 
     fun newPreview(): PreviewPlayer
 
-    /** Renders the project and saves it where the platform keeps videos. Throws [ExportFailed]. */
-    suspend fun export(project: Project, settings: ExportSettings, onProgress: (Int) -> Unit): String
+    /**
+     * Renders the project and saves it where the platform keeps videos. [layers] are the text and
+     * logo overlays, already drawn at the output size. Throws [ExportFailed].
+     */
+    suspend fun export(
+        project: Project,
+        settings: ExportSettings,
+        layers: List<OverlayLayer>,
+        onProgress: (Int) -> Unit,
+    ): String
+
+    /** Loads an image (logo) at most [maxSide] pixels on its long side, keeping transparency. */
+    suspend fun loadImage(ref: String, maxSide: Int): ImageBitmap?
 
     /** Where exports are saved, in words ("Movies/Reelcut"). */
     val exportFolderLabel: String
@@ -41,6 +52,9 @@ interface MediaEngine {
     fun openVideo(ref: String)
     fun shareVideo(ref: String)
 }
+
+/** A full-frame transparent image shown between [startUs] and [endUs] of the timeline. */
+class OverlayLayer(val image: ImageBitmap, val startUs: Long, val endUs: Long)
 
 class ExportFailed(message: String, cause: Throwable? = null) : Exception(message, cause)
 

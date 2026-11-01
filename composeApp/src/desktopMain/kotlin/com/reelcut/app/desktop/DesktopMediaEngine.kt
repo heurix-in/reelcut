@@ -1,19 +1,24 @@
 package com.reelcut.app.desktop
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ClipKind
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Project
 import com.reelcut.app.engine.ExportItem
 import com.reelcut.app.engine.MediaEngine
+import com.reelcut.app.engine.OverlayLayer
 import com.reelcut.app.engine.PreviewPlayer
 import com.reelcut.app.engine.Thumbnails
 import com.reelcut.app.newId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.awt.Desktop
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import java.io.File
+import javax.imageio.ImageIO
 
 /** Windows: FFmpeg for import, preview and export; videos are saved in Videos\Reelcut. */
 class DesktopMediaEngine : MediaEngine {
@@ -62,8 +67,32 @@ class DesktopMediaEngine : MediaEngine {
 
     override fun newPreview(): PreviewPlayer = DesktopPreviewPlayer()
 
-    override suspend fun export(project: Project, settings: ExportSettings, onProgress: (Int) -> Unit): String =
-        exporter.export(project, settings, onProgress)
+    override suspend fun export(
+        project: Project,
+        settings: ExportSettings,
+        layers: List<OverlayLayer>,
+        onProgress: (Int) -> Unit,
+    ): String = exporter.export(project, settings, layers, onProgress)
+
+    /** Keeps transparency (unlike thumbnails), for logos. */
+    override suspend fun loadImage(ref: String, maxSide: Int): ImageBitmap? = withContext(Dispatchers.IO) {
+        runCatching {
+            val img = ImageIO.read(File(ref)) ?: return@runCatching null
+            val long = maxOf(img.width, img.height)
+            val scaled = if (long <= maxSide) img else {
+                val s = maxSide.toDouble() / long
+                val w = (img.width * s).toInt().coerceAtLeast(1)
+                val h = (img.height * s).toInt().coerceAtLeast(1)
+                val out = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+                val g = out.createGraphics()
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+                g.drawImage(img, 0, 0, w, h, null)
+                g.dispose()
+                out
+            }
+            scaled.toComposeImageBitmap()
+        }.getOrNull()
+    }
 
     override val exportFolderLabel: String = "Videos\\Reelcut"
     override val shareLabel: String = "Show in folder"

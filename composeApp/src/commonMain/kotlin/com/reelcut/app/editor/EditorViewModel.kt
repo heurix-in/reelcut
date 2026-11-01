@@ -3,12 +3,17 @@ package com.reelcut.app.editor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.reelcut.app.data.Canvas
+import com.reelcut.app.data.CanvasMath
+import com.reelcut.app.data.Overlay
+import com.reelcut.app.data.OverlayKind
+import com.reelcut.app.data.OverlayMath
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Project
 import com.reelcut.app.data.ProjectRepository
 import com.reelcut.app.data.Timeline
 import com.reelcut.app.engine.ExportFailed
+import com.reelcut.app.engine.OverlayLayer
 import com.reelcut.app.engine.Services
 import com.reelcut.app.nowMillis
 import kotlinx.coroutines.CancellationException
@@ -28,7 +33,7 @@ sealed interface ExportState {
     data class Failed(val message: String) : ExportState
 }
 
-enum class Mode { Edit, Trim, Reorder, Speed, Volume, Transform, Canvas, Duration }
+enum class Mode { Edit, Trim, Reorder, Speed, Volume, Transform, Canvas, Duration, Text, Logo }
 
 /**
  * Holds the open project and every edit made to it. Each edit makes a new immutable Project;
@@ -60,6 +65,12 @@ class EditorViewModel(private val services: Services, private val projectId: Str
 
     private val _selectedId = MutableStateFlow<String?>(null)
     val selectedId: StateFlow<String?> = _selectedId.asStateFlow()
+
+    /** The text or logo being edited. */
+    private val _selectedOverlayId = MutableStateFlow<String?>(null)
+    val selectedOverlayId: StateFlow<String?> = _selectedOverlayId.asStateFlow()
+    private var overlayIsNew = false
+    val isNewOverlay: Boolean get() = overlayIsNew
 
     private val _mode = MutableStateFlow(Mode.Edit)
     val mode: StateFlow<Mode> = _mode.asStateFlow()
@@ -368,6 +379,14 @@ class EditorViewModel(private val services: Services, private val projectId: Str
     fun setFill(fill: Boolean) = stageClip { it.copy(fill = fill) }
 
     fun closePanel(apply: Boolean) {
+        // An empty new text box is not worth keeping.
+        val overlayId = _selectedOverlayId.value
+        if (apply && overlayId != null) {
+            val o = _project.value?.overlays?.firstOrNull { it.id == overlayId }
+            if (o != null && o.isText && o.text.isBlank()) removeOverlayStaged(overlayId)
+        }
+        _selectedOverlayId.value = null
+        overlayIsNew = false
         val before = panelSnapshot
         panelSnapshot = null
         panelIndex = -1
@@ -386,6 +405,85 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         }
     }
 
+    // ---------- Text and logo overlays ----------
+
+    private fun openOverlayPanel(o: Overlay, isNew: Boolean, snapshot: Project) {
+        panelSnapshot = snapshot
+        panelIndex = -1
+        _selectedId.value = null
+        _selectedOverlayId.value = o.id
+        overlayIsNew = isNew
+        _mode.value = if (o.isText) Mode.Text else Mode.Logo
+    }
+
+    /** Adds an empty text box at the playhead and opens the Text panel. */
+    fun addText() {
+        val p = _project.value ?: return
+        if (p.clips.isEmpty()) return
+        preview.pause()
+        val (s, e) = OverlayMath.rangeAt(_playheadUs.value, p.durationUs, Overlay.DEFAULT_TEXT_US)
+        val o = Overlay(id = ProjectRepository.newId(), kind = OverlayKind.TEXT, startUs = s, endUs = e, y = 0.5f)
+        stage { it.copy(overlays = it.overlays + o) }
+        openOverlayPanel(o, isNew = true, snapshot = p)
+    }
+
+    /** Adds a picture (logo) over the whole video, top right, and opens the Logo panel. */
+    fun addLogo(refs: List<String>, onFail: () -> Unit) {
+        viewModelScope.launch {
+            val p = _project.value ?: return@launch
+            val image = engine.importClips(refs).firstOrNull { it.isPhoto }
+            if (image == null) {
+                onFail()
+                return@launch
+            }
+            preview.pause()
+            val o = Overlay(
+                id = ProjectRepository.newId(),
+                kind = OverlayKind.LOGO,
+                startUs = 0L,
+                endUs = p.durationUs.coerceAtLeast(Overlay.MIN_US),
+                x = 0.82f,
+                y = 0.1f,
+                imageUri = image.sourceUri,
+                imageWidth = image.width,
+                imageHeight = image.height,
+            )
+            stage { it.copy(overlays = it.overlays + o) }
+            openOverlayPanel(o, isNew = true, snapshot = p)
+        }
+    }
+
+    /** Opens an existing overlay for editing (saving any other open one first). */
+    fun editOverlay(o: Overlay) {
+        if (_selectedOverlayId.value == o.id) return
+        if (_mode.value == Mode.Text || _mode.value == Mode.Logo) closePanel(apply = true)
+        else if (_mode.value != Mode.Edit) return
+        val p = _project.value ?: return
+        preview.pause()
+        openOverlayPanel(o, isNew = false, snapshot = p)
+    }
+
+    fun stageOverlay(id: String, transform: (Overlay) -> Overlay) =
+        stage { p -> p.copy(overlays = p.overlays.map { if (it.id == id) transform(it) else it }) }
+
+    fun stageSelectedOverlay(transform: (Overlay) -> Overlay) {
+        val id = _selectedOverlayId.value ?: return
+        val total = _project.value?.durationUs ?: 0L
+        stageOverlay(id) { o ->
+            val n = transform(o)
+            val (s, e) = OverlayMath.clampRange(n.startUs, n.endUs, total)
+            n.copy(startUs = s, endUs = e)
+        }
+    }
+
+    private fun removeOverlayStaged(id: String) = stage { p -> p.copy(overlays = p.overlays.filterNot { it.id == id }) }
+
+    fun deleteOverlay() {
+        val id = _selectedOverlayId.value ?: return
+        removeOverlayStaged(id)
+        closePanel(apply = true)
+    }
+
     // ---------- Reorder mode ----------
 
     fun startReorder() {
@@ -399,7 +497,10 @@ class EditorViewModel(private val services: Services, private val projectId: Str
 
     // ---------- Export ----------
 
-    fun startExport(settings: ExportSettings) {
+    fun startExport(
+        settings: ExportSettings,
+        renderLayers: suspend (overlays: List<Overlay>, width: Int, height: Int) -> List<OverlayLayer>,
+    ) {
         val p = _project.value ?: return
         if (p.clips.isEmpty() || _export.value is ExportState.Running) return
         preview.pause()
@@ -408,7 +509,11 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         _export.value = ExportState.Running(0)
         exportJob = viewModelScope.launch {
             _export.value = try {
-                val ref = engine.export(toExport, settings) { pct ->
+                val size = CanvasMath.outputSize(toExport.clips, toExport.canvas, settings.height)
+                val layers = withContext(Dispatchers.Default) {
+                    renderLayers(toExport.overlays, size.width, size.height)
+                }
+                val ref = engine.export(toExport, settings, layers) { pct ->
                     _export.value = ExportState.Running(pct.coerceIn(0, 100))
                 }
                 ExportState.Done(ref)

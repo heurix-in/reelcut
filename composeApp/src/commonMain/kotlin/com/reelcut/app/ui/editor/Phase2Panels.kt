@@ -23,6 +23,7 @@ import com.reelcut.app.data.Canvas
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.Timeline
 import com.reelcut.app.ui.components.AccentButton
+import com.reelcut.app.ui.components.ColorPicker
 import com.reelcut.app.ui.components.GhostButton
 import com.reelcut.app.ui.components.Pill
 import com.reelcut.app.ui.components.RoundButton
@@ -33,7 +34,7 @@ import com.reelcut.app.ui.theme.Type
 import kotlin.math.roundToInt
 
 @Composable
-private fun PanelHeader(title: String, value: String? = null, onApplyAll: (() -> Unit)? = null) {
+internal fun PanelHeader(title: String, value: String? = null, onApplyAll: (() -> Unit)? = null) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = Type.Title)
         if (value != null) {
@@ -45,7 +46,7 @@ private fun PanelHeader(title: String, value: String? = null, onApplyAll: (() ->
 }
 
 @Composable
-private fun PanelActions(onCancel: () -> Unit, onDone: () -> Unit) {
+internal fun PanelActions(onCancel: () -> Unit, onDone: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         GhostButton("Cancel", onCancel, Modifier.weight(1f))
         AccentButton("Done", onDone, Modifier.weight(1f))
@@ -53,7 +54,7 @@ private fun PanelActions(onCancel: () -> Unit, onDone: () -> Unit) {
 }
 
 @Composable
-private fun AccentSlider(value: Float, onChange: (Float) -> Unit, range: ClosedFloatingPointRange<Float>) {
+internal fun AccentSlider(value: Float, onChange: (Float) -> Unit, range: ClosedFloatingPointRange<Float>) {
     Slider(
         value = value,
         onValueChange = onChange,
@@ -67,7 +68,7 @@ private fun AccentSlider(value: Float, onChange: (Float) -> Unit, range: ClosedF
 }
 
 @Composable
-private fun ChipRow(content: @Composable () -> Unit) {
+internal fun ChipRow(content: @Composable () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -183,6 +184,7 @@ fun CanvasPanel(
     canvas: Canvas,
     onAspect: (Aspect) -> Unit,
     onBlur: (Boolean) -> Unit,
+    onColor: (Long) -> Unit,
     onCancel: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -193,10 +195,16 @@ fun CanvasPanel(
                 Pill(a.label, selected = canvas.aspect == a, selectedColor = Palette.Accent, onClick = { onAspect(a) })
             }
         }
-        Text("Background", style = Type.Label, color = Palette.Muted)
-        ChipRow {
-            Pill("Black", selected = !canvas.blurBackground, selectedColor = Palette.Accent, onClick = { onBlur(false) })
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Background", style = Type.Label, color = Palette.Muted)
+            Spacer(Modifier.weight(1f))
+            Pill("Colour", selected = !canvas.blurBackground, selectedColor = Palette.Accent, onClick = { onBlur(false) })
             Pill("Blur", selected = canvas.blurBackground, selectedColor = Palette.Accent, onClick = { onBlur(true) })
+        }
+        if (!canvas.blurBackground) {
+            ColorPicker(value = canvas.backgroundArgb, onChange = onColor)
+        } else {
+            Text("The video itself, blurred, fills the space around it.", style = Type.Label, color = Palette.Muted)
         }
         PanelActions(onCancel, onDone)
     }

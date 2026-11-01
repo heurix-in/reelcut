@@ -58,7 +58,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.text.rememberTextMeasurer
+import com.reelcut.app.data.Overlay
+import com.reelcut.app.data.OverlayKind
+import com.reelcut.app.engine.MediaEngine
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,6 +111,8 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
     val canRedo by vm.canRedo.collectAsState()
     val exportState by vm.export.collectAsState()
     val trimRange by vm.trimRange.collectAsState()
+    val selectedOverlayId by vm.selectedOverlayId.collectAsState()
+    val measurer = rememberTextMeasurer(cacheSize = 16)
     val currentIndex by vm.preview.currentIndex.collectAsState()
 
     var dpPerSecond by rememberSaveable { mutableFloatStateOf(56f) }
@@ -137,6 +145,10 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
         pick(filter)
     }
 
+    val pickLogo = rememberMediaPicker { refs ->
+        if (refs.isNotEmpty()) vm.addLogo(refs) { hint = "That picture could not be opened" }
+    }
+
     PlatformBackHandler(enabled = mode != Mode.Edit || selectedId != null) {
         when (mode) {
             Mode.Trim -> vm.finishTrim(apply = false)
@@ -164,6 +176,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
         return
     }
 
+    val logos = rememberLogos(p.overlays, services.engine)
     val selectedIndex = p.clips.indexOfFirst { it.id == selectedId }
     val selected = p.clips.getOrNull(selectedIndex)
     val soon = { name: String -> hint = "$name arrives in the next update" }
@@ -226,6 +239,21 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                 sourceTimeUs = shownSourceUs,
                 trimMode = mode == Mode.Trim,
                 thumbs = vm.thumbnails,
+                overlays = OverlayState(
+                    overlays = p.overlays,
+                    timeUs = playheadUs,
+                    selectedId = selectedOverlayId,
+                    measurer = measurer,
+                    logos = logos,
+                    onTap = { o ->
+                        when {
+                            o != null && (mode == Mode.Edit || mode == Mode.Text || mode == Mode.Logo) -> vm.editOverlay(o)
+                            mode == Mode.Trim -> vm.toggleTrimPlay()
+                            else -> vm.togglePlay()
+                        }
+                    },
+                    onChange = { id, t -> if (id == selectedOverlayId) vm.stageSelectedOverlay(t) },
+                ),
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Palette.InkDeep)
@@ -301,9 +329,9 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                         ToolBar(
                             tools = listOf(
                                 Tool(Icons.Rounded.AspectRatio, "Canvas", enabled = p.clips.isNotEmpty()) { vm.openPanel(Mode.Canvas) },
-                                Tool(Icons.Rounded.TextFields, "Text", soon = true) { soon("Text") },
+                                Tool(Icons.Rounded.TextFields, "Text", enabled = p.clips.isNotEmpty()) { vm.addText() },
                                 Tool(Icons.Rounded.MusicNote, "Audio", soon = true) { soon("Audio") },
-                                Tool(Icons.Rounded.Image, "Logo", soon = true) { soon("Logo") },
+                                Tool(Icons.Rounded.Image, "Logo", enabled = p.clips.isNotEmpty()) { pickLogo(MediaFilter.Photo) },
                                 Tool(Icons.Rounded.AutoAwesome, "Filter", soon = true) { soon("Filter") },
                                 Tool(Icons.Rounded.SwapHoriz, "Reorder", enabled = p.clips.size > 1) { vm.startReorder() },
                                 Tool(Icons.Rounded.AddPhotoAlternate, "Add") { addMedia(vm.insertIndexAtPlayhead(), MediaFilter.All) },
@@ -386,9 +414,37 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                     canvas = p.canvas,
                     onAspect = { a -> vm.stageCanvas { it.copy(aspect = a) } },
                     onBlur = { b -> vm.stageCanvas { it.copy(blurBackground = b) } },
+                    onColor = { c -> vm.stageCanvas { it.copy(backgroundArgb = c, blurBackground = false) } },
                     onCancel = { vm.closePanel(apply = false) },
                     onDone = { vm.closePanel(apply = true) },
                 )
+
+                Mode.Text, Mode.Logo -> p.overlays.firstOrNull { it.id == selectedOverlayId }?.let { o ->
+                    if (o.isText) {
+                        TextPanel(
+                            overlay = o,
+                            playheadUs = playheadUs,
+                            totalUs = p.durationUs,
+                            isNew = vm.isNewOverlay,
+                            onChange = vm::stageSelectedOverlay,
+                            onSeek = { vm.seek(it, exact = true) },
+                            onDelete = vm::deleteOverlay,
+                            onCancel = { vm.closePanel(apply = false) },
+                            onDone = { vm.closePanel(apply = true) },
+                        )
+                    } else {
+                        LogoPanel(
+                            overlay = o,
+                            playheadUs = playheadUs,
+                            totalUs = p.durationUs,
+                            onChange = vm::stageSelectedOverlay,
+                            onSeek = { vm.seek(it, exact = true) },
+                            onDelete = vm::deleteOverlay,
+                            onCancel = { vm.closePanel(apply = false) },
+                            onDone = { vm.closePanel(apply = true) },
+                        )
+                    }
+                }
 
                 Mode.Duration -> vm.panelClip()?.let { clip ->
                     DurationPanel(
@@ -426,7 +482,10 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
             canvas = p.canvas,
             initial = p.export,
             state = exportState,
-            onExport = vm::startExport,
+            onExport = { settings ->
+                val renderer = OverlayRenderer(measurer, services.engine)
+                vm.startExport(settings) { overlays, w, h -> renderer.render(overlays, w, h) }
+            },
             onCancelExport = vm::cancelExport,
             onReset = vm::resetExport,
             onDismiss = {
@@ -480,6 +539,9 @@ private fun TimelineArea(
                 onScrubStart = vm::pause,
                 onScrub = vm::seek,
                 onSelect = vm::select,
+                overlays = project.overlays,
+                selectedOverlayId = null,
+                onSelectOverlay = vm::editOverlay,
                 onInsertAt = onInsertAt,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -554,4 +616,18 @@ private fun TimelineArea(
             }
         }
     }
+}
+
+/** Logo pictures for the preview, loaded once per file. */
+@Composable
+private fun rememberLogos(overlays: List<Overlay>, engine: MediaEngine): Map<String, ImageBitmap> {
+    val uris = overlays.filter { it.kind == OverlayKind.LOGO }.map { it.imageUri }.distinct()
+    val state = produceState(emptyMap<String, ImageBitmap>(), uris) {
+        val loaded = value.toMutableMap()
+        uris.filterNot { it in loaded }.forEach { uri ->
+            engine.loadImage(uri, 1024)?.let { loaded[uri] = it }
+        }
+        value = loaded.toMap()
+    }
+    return state.value
 }

@@ -47,6 +47,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.reelcut.app.data.Clip
+import com.reelcut.app.data.Overlay
+import com.reelcut.app.data.OverlayMath
 import com.reelcut.app.data.Timeline
 import com.reelcut.app.engine.Thumbnails
 import com.reelcut.app.ui.components.Pill
@@ -65,6 +67,7 @@ import kotlin.math.roundToInt
 private val StripHeight = 60.dp
 private val ClipHeight = 48.dp
 private val ClipGap = 3.dp
+private val LaneHeight = 24.dp
 
 /**
  * Filmstrip timeline with a fixed centre playhead. Drag to scrub, pinch to zoom,
@@ -84,8 +87,16 @@ fun TimelineStrip(
     onSelect: (String?) -> Unit,
     onInsertAt: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    overlays: List<Overlay> = emptyList(),
+    selectedOverlayId: String? = null,
+    onSelectOverlay: (Overlay) -> Unit = {},
 ) {
     val density = LocalDensity.current
+    val lanes = remember(overlays) { OverlayMath.lanes(overlays) }
+    val laneCount = (lanes.values.maxOrNull() ?: -1) + 1
+    val overlaysState = rememberUpdatedState(overlays)
+    val lanesState = rememberUpdatedState(lanes)
+    val onSelectOverlayState = rememberUpdatedState(onSelectOverlay)
     val pxPerUs = with(density) { dpPerSecond.dp.toPx() } / 1_000_000f
     val starts = remember(clips) { Timeline.startsUs(clips) }
     val total = remember(clips) { Timeline.totalUs(clips) }
@@ -102,7 +113,7 @@ fun TimelineStrip(
 
     BoxWithConstraints(
         modifier
-            .height(StripHeight)
+            .height(StripHeight + LaneHeight * laneCount)
             .clipToBounds()
             // Mouse wheel (Windows): zoom the timeline.
             .pointerInput(Unit) {
@@ -166,9 +177,18 @@ fun TimelineStrip(
                     if (dragging) {
                         onScrubState.value(timeUs.toLong(), true)
                     } else if (!upConsumed) {
-                        // Tap: select the clip under the finger.
                         val centre = size.width / 2f
                         val t = playheadState.value + ((down.position.x - centre) / pxPerUsState.value).toLong()
+                        val stripPx = StripHeight.toPx()
+                        if (down.position.y > stripPx) {
+                            // Tap on an overlay bar.
+                            val lane = ((down.position.y - stripPx) / LaneHeight.toPx()).toInt()
+                            overlaysState.value.firstOrNull { o ->
+                                lanesState.value[o.id] == lane && t in o.startUs..o.endUs
+                            }?.let { onSelectOverlayState.value(it) }
+                            return@awaitEachGesture
+                        }
+                        // Tap: select the clip under the finger.
                         val list = clipsState.value
                         val hit = if (t < 0 || t > totalState.value) null else Timeline.locate(list, t)
                         onSelectState.value(hit?.let { list[it.index].id })
@@ -219,6 +239,37 @@ fun TimelineStrip(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Rounded.Add, "Insert clip here", tint = Palette.White, modifier = Modifier.size(14.dp))
+                }
+            }
+        }
+
+        // Text and logo bars under the clips, one lane per overlap.
+        val laneH = with(density) { LaneHeight.toPx() }
+        val stripPx = with(density) { StripHeight.toPx() }
+        overlays.forEach { o ->
+            val lane = lanes[o.id] ?: return@forEach
+            val x = centre + (o.startUs - playheadUs) * pxPerUs
+            val w = ((o.endUs - o.startUs) * pxPerUs).coerceAtLeast(6f)
+            if (x + w < -40f || x > widthPx + 40f) return@forEach
+            key(o.id) {
+                val sel = o.id == selectedOverlayId
+                Box(
+                    Modifier
+                        .offset { IntOffset(x.roundToInt(), (stripPx + lane * laneH + 2.dp.toPx()).roundToInt()) }
+                        .wrapContentSize(Alignment.TopStart, unbounded = true)
+                        .size(with(density) { w.toDp() }, LaneHeight - 4.dp)
+                        .clip(Shape.Pill)
+                        .background(if (o.isText) Palette.Accent else Palette.Stone)
+                        .then(if (sel) Modifier.border(2.dp, Palette.White, Shape.Pill) else Modifier)
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        if (o.isText) "T  " + o.text.ifBlank { "Text" }.replace('\n', ' ') else "Logo",
+                        style = Type.Small,
+                        color = if (o.isText) Palette.Ink else Palette.White,
+                        maxLines = 1,
+                    )
                 }
             }
         }

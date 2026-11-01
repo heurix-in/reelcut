@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class Project(
-    val schemaVersion: Int = 2,
+    val schemaVersion: Int = 3,
     val id: String,
     val name: String,
     val createdAt: Long,
@@ -19,6 +19,8 @@ data class Project(
     val export: ExportSettings = ExportSettings(),
     /** "Mute Clip": silences the sound of every clip on the main track. */
     val muteOriginal: Boolean = false,
+    /** Text and logos drawn over the video, in drawing order (last on top). */
+    val overlays: List<Overlay> = emptyList(),
 ) {
     val durationUs: Long get() = Timeline.totalUs(clips)
 }

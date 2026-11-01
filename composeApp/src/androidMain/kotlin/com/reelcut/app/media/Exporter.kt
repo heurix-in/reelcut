@@ -40,6 +40,7 @@ class Exporter(private val context: Context) {
         canvas: Canvas,
         muteOriginal: Boolean,
         settings: ExportSettings,
+        layers: List<CompositionBuilder.Layer>,
         onProgress: (Int) -> Unit,
     ): Uri {
         val out = File(context.cacheDir, "export/render.mp4").apply {
@@ -47,7 +48,7 @@ class Exporter(private val context: Context) {
             delete()
         }
         try {
-            render(clips, canvas, muteOriginal, settings, out, onProgress)
+            render(clips, canvas, muteOriginal, settings, layers, out, onProgress)
             return withContext(Dispatchers.IO) { saveToGallery(out) }
         } finally {
             withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) { out.delete() }
@@ -59,10 +60,11 @@ class Exporter(private val context: Context) {
         canvas: Canvas,
         muteOriginal: Boolean,
         settings: ExportSettings,
+        layers: List<CompositionBuilder.Layer>,
         out: File,
         onProgress: (Int) -> Unit,
     ) = withContext(Dispatchers.Main) {
-        val composition = CompositionBuilder.exportComposition(clips, canvas, settings, muteOriginal)
+        val composition = CompositionBuilder.exportComposition(clips, canvas, settings, muteOriginal, layers)
         val size = CompositionBuilder.outputSize(clips, canvas, settings)
         val encoderFactory = DefaultEncoderFactory.Builder(context)
             .setRequestedVideoEncoderSettings(

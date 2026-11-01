@@ -4,6 +4,8 @@ import com.reelcut.app.data.CanvasMath
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Project
 import com.reelcut.app.engine.ExportFailed
+import androidx.compose.ui.graphics.toAwtImage
+import com.reelcut.app.engine.OverlayLayer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -13,6 +15,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.imageio.ImageIO
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -31,7 +34,12 @@ class FfmpegExporter {
         listOf("libx264", "h264_mf", "libopenh264").firstOrNull { Regex("\\b$it\\b").containsMatchIn(list) } ?: "mpeg4"
     }
 
-    suspend fun export(project: Project, settings: ExportSettings, onProgress: (Int) -> Unit): String =
+    suspend fun export(
+        project: Project,
+        settings: ExportSettings,
+        layers: List<OverlayLayer>,
+        onProgress: (Int) -> Unit,
+    ): String =
         withContext(Dispatchers.IO) {
             val clips = project.clips
             if (clips.isEmpty()) throw ExportFailed("There is nothing to export.")
@@ -39,7 +47,13 @@ class FfmpegExporter {
             val name = "Reelcut_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + ".mp4"
             val out = File(outputDir, name)
             val log = File.createTempFile("reelcut-export", ".log")
-            val args = buildArgs(project, settings, out)
+            val layerDir = File(System.getProperty("java.io.tmpdir"), "reelcut-layers-" + System.nanoTime()).apply { mkdirs() }
+            val layerFiles = layers.mapIndexed { i, layer ->
+                val f = File(layerDir, "layer$i.png")
+                ImageIO.write(layer.image.toAwtImage(), "png", f)
+                Triple(f, layer.startUs, layer.endUs)
+            }
+            val args = buildArgs(project, settings, out, layerFiles)
             val process = ProcessBuilder(listOf(Ffmpeg.executable) + args)
                 .redirectError(log)
                 .start()
@@ -74,6 +88,7 @@ class FfmpegExporter {
                     }
                 }
                 log.delete()
+                layerDir.deleteRecursively()
             }
         }
 
@@ -87,7 +102,12 @@ class FfmpegExporter {
 
     private fun num(v: Double) = String.format(Locale.US, "%.3f", v)
 
-    internal fun buildArgs(project: Project, settings: ExportSettings, out: File): List<String> {
+    internal fun buildArgs(
+        project: Project,
+        settings: ExportSettings,
+        out: File,
+        layers: List<Triple<File, Long, Long>> = emptyList(),
+    ): List<String> {
         val clips = project.clips
         val size = CanvasMath.outputSize(clips, project.canvas, settings.height)
         val w = size.width
@@ -96,6 +116,7 @@ class FfmpegExporter {
         val args = mutableListOf("-hide_banner", "-nostats", "-y", "-progress", "pipe:1")
         val graph = StringBuilder()
         var input = 0
+        val padColor = "0x" + (project.canvas.backgroundArgb and 0xFFFFFFL).toString(16).padStart(6, '0')
 
         clips.forEachIndexed { i, c ->
             val clipSeconds = (c.trimEndUs - c.trimStartUs) / 1_000_000.0
@@ -137,7 +158,7 @@ class FfmpegExporter {
                 v.append("[bgb$i][fgs$i]overlay=(W-w)/2:(H-h)/2,setsar=1[$framed];")
             } else {
                 v.append(",scale=$w:$h:force_original_aspect_ratio=decrease:force_divisible_by=2")
-                v.append(",pad=$w:$h:(ow-iw)/2:(oh-ih)/2:black,setsar=1[$framed];")
+                v.append(",pad=$w:$h:(ow-iw)/2:(oh-ih)/2:$padColor,setsar=1[$framed];")
             }
             v.append("[$framed]format=yuv420p,trim=end=${num(timelineSeconds)},setpts=PTS-STARTPTS[v$i];")
             graph.append(v)
@@ -153,7 +174,18 @@ class FfmpegExporter {
             graph.append(a)
         }
         clips.indices.forEach { graph.append("[v$it][a$it]") }
-        graph.append("concat=n=${clips.size}:v=1:a=1[outv][outa]")
+        graph.append("concat=n=${clips.size}:v=1:a=1[cat][outa]")
+
+        // Text and logo layers: one transparent picture each, shown in its time range.
+        var current = "cat"
+        layers.forEachIndexed { k, (file, startUs, endUs) ->
+            val idx = input++
+            args += listOf("-i", file.absolutePath)
+            val next = "ov$k"
+            graph.append(";[$current][$idx:v]overlay=0:0:enable='between(t,${num(startUs / 1e6)},${num(endUs / 1e6)})'[$next]")
+            current = next
+        }
+        graph.append(";[$current]format=yuv420p[outv]")
 
         val bitrate = CanvasMath.bitrate(size, settings)
         args += listOf("-filter_complex", graph.toString(), "-map", "[outv]", "-map", "[outa]")

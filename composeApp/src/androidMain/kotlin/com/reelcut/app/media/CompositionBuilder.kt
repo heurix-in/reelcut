@@ -1,6 +1,16 @@
 package com.reelcut.app.media
 
+import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.net.Uri
+import androidx.media3.effect.BitmapOverlay
+import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.OverlaySettings
+import androidx.media3.effect.StaticOverlaySettings
+import androidx.media3.effect.TextureOverlay
+import com.google.common.collect.ImmutableList
 import androidx.media3.common.C
 import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
@@ -53,16 +63,36 @@ object CompositionBuilder {
 
     fun bitrate(size: CanvasMath.Size, settings: ExportSettings): Int = CanvasMath.bitrate(size, settings)
 
-    fun exportComposition(clips: List<Clip>, canvas: Canvas, settings: ExportSettings, muteOriginal: Boolean = false): Composition {
+    /** A text/logo layer as an Android bitmap, shown between two timeline times. */
+    class Layer(val bitmap: Bitmap, val startUs: Long, val endUs: Long)
+
+    fun exportComposition(
+        clips: List<Clip>,
+        canvas: Canvas,
+        settings: ExportSettings,
+        muteOriginal: Boolean = false,
+        layers: List<Layer> = emptyList(),
+    ): Composition {
         val size = outputSize(clips, canvas, settings)
-        val items = clips.map { clip -> editedItem(clip, canvas, settings, size, muteOriginal) }
+        val starts = com.reelcut.app.data.Timeline.startsUs(clips)
+        val items = clips.mapIndexed { i, clip ->
+            editedItem(clip, canvas, settings, size, muteOriginal, layers, starts[i])
+        }
         return Composition.Builder(EditedMediaItemSequence(items))
             // Clips with no sound (and photos) get silence, so mixed clips join cleanly.
             .experimentalSetForceAudioTrack(true)
             .build()
     }
 
-    private fun editedItem(clip: Clip, canvas: Canvas, settings: ExportSettings, size: CanvasMath.Size, muteOriginal: Boolean): EditedMediaItem {
+    private fun editedItem(
+        clip: Clip,
+        canvas: Canvas,
+        settings: ExportSettings,
+        size: CanvasMath.Size,
+        muteOriginal: Boolean,
+        layers: List<Layer>,
+        clipStartUs: Long,
+    ): EditedMediaItem {
         val audio = mutableListOf<AudioProcessor>()
         val video = mutableListOf<Effect>()
 
@@ -106,6 +136,17 @@ object CompositionBuilder {
             video += FrameDropEffect.createDefaultFrameDropEffect(settings.fps.toFloat())
         }
 
+        // Coloured background (covers the bars around the video), then text and logos on top.
+        val overlays = mutableListOf<TextureOverlay>()
+        if (!canvas.blurBackground && !clip.fill && canvas.backgroundArgb != 0xFF000000L) {
+            overlays += BitmapOverlay.createStaticBitmapOverlay(backgroundBitmap(clip, canvas, size))
+        }
+        val clipEndUs = clipStartUs + clip.durationUs
+        layers.filter { it.endUs > clipStartUs && it.startUs < clipEndUs }.forEach {
+            overlays += TimedOverlay(it.bitmap, it.startUs, it.endUs, clipStartUs)
+        }
+        if (overlays.isNotEmpty()) video += OverlayEffect(ImmutableList.copyOf(overlays))
+
         val b = EditedMediaItem.Builder(mediaItem(clip))
             .setEffects(Effects(audio, video))
         if (clip.isPhoto) {
@@ -116,6 +157,50 @@ object CompositionBuilder {
             b.setRemoveAudio(true)
         }
         return b.build()
+    }
+
+    /** Canvas-sized bitmap in the background colour with a clear hole where the video sits. */
+    private fun backgroundBitmap(clip: Clip, canvas: Canvas, size: CanvasMath.Size): Bitmap {
+        val bmp = Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        c.drawColor(canvas.backgroundArgb.toInt())
+        val content = CanvasMath.contentSize(clip, size.width.toFloat(), size.height.toFloat())
+        val w = if (clip.rotation % 180 == 0) content.width else content.height
+        val h = if (clip.rotation % 180 == 0) content.height else content.width
+        val left = (size.width - w) / 2f + 1f
+        val top = (size.height - h) / 2f + 1f
+        val clear = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
+        c.drawRect(left, top, left + w - 2f, top + h - 2f, clear)
+        return bmp
+    }
+
+    /**
+     * A full-frame layer visible between two timeline times. Each clip gets its own copy; the
+     * first frame it sees is the clip's first frame, so time = clip start + elapsed.
+     */
+    private class TimedOverlay(
+        private val bitmap: Bitmap,
+        private val startUs: Long,
+        private val endUs: Long,
+        private val clipStartUs: Long,
+    ) : BitmapOverlay() {
+        private var firstUs = Long.MIN_VALUE
+
+        private fun timelineUs(presentationTimeUs: Long): Long {
+            if (firstUs == Long.MIN_VALUE) firstUs = presentationTimeUs
+            return clipStartUs + (presentationTimeUs - firstUs)
+        }
+
+        override fun getBitmap(presentationTimeUs: Long): Bitmap {
+            timelineUs(presentationTimeUs)
+            return bitmap
+        }
+
+        override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
+            val t = timelineUs(presentationTimeUs)
+            val visible = t in startUs until endUs
+            return StaticOverlaySettings.Builder().setAlphaScale(if (visible) 1f else 0f).build()
+        }
     }
 
     /** Scales every channel by [volume] (mono and stereo sources). */

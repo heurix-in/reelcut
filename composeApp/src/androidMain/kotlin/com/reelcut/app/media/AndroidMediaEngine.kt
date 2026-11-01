@@ -9,11 +9,13 @@ import android.provider.MediaStore
 import android.util.Size
 import android.widget.Toast
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Project
 import com.reelcut.app.engine.ExportItem
 import com.reelcut.app.engine.MediaEngine
+import com.reelcut.app.engine.OverlayLayer
 import com.reelcut.app.engine.PreviewPlayer
 import com.reelcut.app.engine.Thumbnails
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +34,19 @@ class AndroidMediaEngine(private val context: Context) : MediaEngine {
 
     override fun newPreview(): PreviewPlayer = AndroidPreviewPlayer(context)
 
-    override suspend fun export(project: Project, settings: ExportSettings, onProgress: (Int) -> Unit): String =
-        exporter.export(project.clips, project.canvas, project.muteOriginal, settings, onProgress).toString()
+    override suspend fun export(
+        project: Project,
+        settings: ExportSettings,
+        layers: List<OverlayLayer>,
+        onProgress: (Int) -> Unit,
+    ): String {
+        val androidLayers = layers.map { CompositionBuilder.Layer(it.image.asAndroidBitmap(), it.startUs, it.endUs) }
+        return exporter.export(project.clips, project.canvas, project.muteOriginal, settings, androidLayers, onProgress).toString()
+    }
+
+    override suspend fun loadImage(ref: String, maxSide: Int): ImageBitmap? = withContext(Dispatchers.IO) {
+        MediaProbe.decodePhoto(context, Uri.parse(ref), maxSide)?.asImageBitmap()
+    }
 
     override val exportFolderLabel = "Movies/Reelcut"
     override val shareLabel = "Share"
