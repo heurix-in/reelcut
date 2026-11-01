@@ -24,13 +24,21 @@
   (* = marked "Soon")
 - Windows: FFmpeg preview with sound, mouse-wheel zoom on the timeline, export to Videos\Reelcut
 
+## Done – Text, Logo, background colour (1 Nov 2026, release v0.2.7)
+- Text: type, font (Clean/Bold/Serif/Mono), size, opacity, colour, outline, label box, soft shadow,
+  alignment, timing (start/end at playhead, whole video); drag to move, pinch or yellow corner dot
+  to resize/rotate; tap text on the video or its bar under the timeline to edit
+- Logo: any picture (PNG keeps transparency), size, opacity, quick positions, timing
+- Canvas background: any colour (swatches + hue/shade sliders) or blur
+- One drawing routine for preview and export; Android burns layers in with Media3 overlays,
+  Windows with ffmpeg overlay
+
 ## Known gaps / next
 - Import uses the system picker instead of a custom in-app grid (keeps the app permission-free)
 - Light theme not done yet (dark only)
 - Preview may show a brief hitch at clip joins; export is seamless
-- Solid colour backgrounds (only black and blur so far)
 - Windows preview: sped-up clips play silent (sound follows speed on export); photos ignore EXIF rotation
-- Phase 3: text and stickers on a multi-track timeline
+- Next: Audio (music from device, voice-over, volume, fade), then filters and animations
 
 ## Decisions (31 Oct 2026)
 1. One shared app for Android and Windows (Compose Multiplatform): shared UI, timeline and project code;

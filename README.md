@@ -16,6 +16,7 @@ Every push to `main` builds on GitHub Actions and publishes one release with:
 - InShot-style editor: video on top, playback row, labelled toolbar that follows the selection, ruler timeline with + and Mute clip
 - Trim, split, duplicate, reorder, delete, undo/redo, autosave
 - Canvas 9:16 / 4:5 / 1:1 / 16:9 with black or blurred background; speed 0.25×–4×; volume and mute; rotate, mirror, fit/fill; photo length
+- Text (fonts, colours, outline, label, shadow, timing) and logos over the video; any background colour
 - MP4 export 720p/1080p, 30/60 fps (Android: Movies/Reelcut; Windows: Videos\Reelcut)
 
 ## Project layout (Compose Multiplatform, one module `composeApp`)
