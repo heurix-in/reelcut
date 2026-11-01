@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Android + Windows
 
 on:
   push:
@@ -9,56 +9,121 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-
       - uses: gradle/actions/setup-gradle@v4
-
-      - name: Get font
+      - name: Get fonts
         run: ./scripts/get-fonts.sh
-
-      - name: Test and build
+      - name: Test and build APK
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleRelease 2>&1 | tee build.log
-
+          ./gradlew --no-daemon --stacktrace :composeApp:testDebugUnitTest :composeApp:assembleRelease 2>&1 | tee build-android.log
       - name: Name the APK
-        run: cp app/build/outputs/apk/release/app-release.apk reelcut-0.1.${{ github.run_number }}.apk
-
+        run: cp composeApp/build/outputs/apk/release/composeApp-release.apk reelcut-0.2.${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: reelcut-0.1.${{ github.run_number }}
+          name: apk
           path: reelcut-*.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: log-android
+          path: build-android.log
 
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Get fonts
+        shell: bash
+        run: ./scripts/get-fonts.sh
+      - name: Make sure WiX is available (needed for the installer)
+        shell: pwsh
+        run: |
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            $wix = Get-ChildItem "C:\Program Files (x86)" -Filter "WiX Toolset v3*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($wix) { "$($wix.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append }
+            else { choco install wixtoolset --version 3.14.1 -y --no-progress; "C:\Program Files (x86)\WiX Toolset v3.14\bin" | Out-File -FilePath $env:GITHUB_PATH -Append }
+          }
+      - name: Build Windows app
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace :composeApp:packageExe :composeApp:createDistributable 2>&1 | tee build-windows.log
+      - name: Collect installer and portable zip
+        shell: pwsh
+        run: |
+          $n = "${{ github.run_number }}"
+          $exe = Get-ChildItem composeApp/build/compose/binaries/main/exe -Filter *.exe | Select-Object -First 1
+          Copy-Item $exe.FullName "Reelcut-Setup-0.2.$n.exe"
+          Compress-Archive -Path composeApp/build/compose/binaries/main/app/Reelcut -DestinationPath "Reelcut-Windows-portable-0.2.$n.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            Reelcut-Setup-*.exe
+            Reelcut-Windows-portable-*.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: log-windows
+          path: build-windows.log
+
+  release:
+    needs: [android, windows]
+    if: always() && needs.android.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v0.1.${{ github.run_number }}" reelcut-0.1.${{ github.run_number }}.apk \
+          files=$(find dist/apk dist/windows -type f 2>/dev/null | tr '\n' ' ')
+          notes="Built from ${{ github.sha }}. Android: install the .apk. Windows: run Reelcut-Setup (or unzip the portable version and run Reelcut.exe)."
+          if [ "${{ needs.windows.result }}" != "success" ]; then notes="$notes (Windows build failed this time.)"; fi
+          gh release create "v0.2.${{ github.run_number }}" $files \
             --target "${{ github.sha }}" \
-            --title "Reelcut 0.1.${{ github.run_number }}" \
-            --notes "Built from ${{ github.sha }}" --latest
+            --title "Reelcut 0.2.${{ github.run_number }}" \
+            --notes "$notes" --latest
 
-      # Keeps the latest build log on the ci-log branch so it can be read without signing in.
-      - name: Save build log
-        if: always()
+  # Keeps the latest build logs on the ci-log branch so they can be read without signing in.
+  logs:
+    needs: [android, windows]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: log-*
+          path: logs
+          merge-multiple: true
+      - name: Push logs
         run: |
-          mkdir -p "$RUNNER_TEMP/log"
-          cp build.log "$RUNNER_TEMP/log/" 2>/dev/null || echo "no build log" > "$RUNNER_TEMP/log/build.log"
-          echo "${{ job.status }} ${{ github.sha }} run ${{ github.run_number }}" > "$RUNNER_TEMP/log/status.txt"
+          mkdir -p "$RUNNER_TEMP/out"
+          cp logs/*.log "$RUNNER_TEMP/out/" 2>/dev/null || true
+          echo "android=${{ needs.android.result }} windows=${{ needs.windows.result }} ${{ github.sha }} run ${{ github.run_number }}" > "$RUNNER_TEMP/out/status.txt"
           git config user.name "ci"
           git config user.email "ci@users.noreply.github.com"
           git checkout --orphan ci-log-tmp
           git rm -rf --cached . -q
-          cp "$RUNNER_TEMP"/log/* .
-          git add -f build.log status.txt
-          git commit -q -m "Build log ${{ github.run_number }}"
+          cp "$RUNNER_TEMP"/out/* .
+          git add -f *.log status.txt 2>/dev/null || git add -f status.txt
+          git commit -q -m "Build logs ${{ github.run_number }}"
           git push -f origin HEAD:ci-log

@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Reelcut"
-include(":app")
+include(":composeApp")
