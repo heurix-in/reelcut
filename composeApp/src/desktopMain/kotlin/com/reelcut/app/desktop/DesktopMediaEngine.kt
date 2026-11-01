@@ -7,6 +7,7 @@ import com.reelcut.app.data.AudioKind
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ClipKind
 import com.reelcut.app.data.ExportSettings
+import com.reelcut.app.data.blankClip
 import com.reelcut.app.data.Project
 import com.reelcut.app.engine.ExportItem
 import com.reelcut.app.engine.MediaEngine
@@ -81,6 +82,19 @@ class DesktopMediaEngine(private val voiceDir: File) : MediaEngine {
                 trimEndUs = dur,
             )
         }
+    }
+
+    override suspend fun createBlankClip(argb: Long, width: Int, height: Int): Clip? = withContext(Dispatchers.IO) {
+        runCatching {
+            val file = File(voiceDir.parentFile ?: voiceDir, "blank/blank_" + argb.toString(16) + ".png")
+            if (!file.exists()) {
+                file.parentFile?.mkdirs()
+                val img = BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
+                for (x in 0 until 16) for (y in 0 until 16) img.setRGB(x, y, argb.toInt())
+                ImageIO.write(img, "png", file)
+            }
+            blankClip(file.absolutePath, width, height)
+        }.getOrNull()
     }
 
     override fun newRecorder(): VoiceRecorder = DesktopVoiceRecorder(voiceDir)

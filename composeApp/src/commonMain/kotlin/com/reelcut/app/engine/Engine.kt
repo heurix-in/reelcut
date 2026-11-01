@@ -26,6 +26,12 @@ interface MediaEngine {
     /** Turns picked sound files into audio clips (placed at 0:00; the caller moves them). Unreadable files are skipped. */
     suspend fun importAudio(refs: List<String>): List<AudioClip>
 
+    /**
+     * A blank frame in one colour, shown like a photo ([Clip.blank]). [width] x [height] is the
+     * shape it reports to the canvas (the picture file itself is tiny).
+     */
+    suspend fun createBlankClip(argb: Long, width: Int, height: Int): Clip?
+
     /** A new microphone recorder for voice-overs. */
     fun newRecorder(): VoiceRecorder
 

@@ -44,11 +44,19 @@
   Windows: ffmpeg afade/volume/adelay/amix with a limiter)
 - Project schema 4 (`audio` list; older projects open unchanged)
 
+## Done – Blank frame, Windows polish (2 Nov 2026, release v0.2.9)
+- "Blank" tool: adds a 3 s black frame at the playhead (a tiny PNG handled like a photo, so both engines export it);
+  change its length with Length
+- Windows: the Explorer-style Open window (via PowerShell, falls back to Java's old dialog) for media and music
+- Windows: panels capped at 640 dp and centred instead of stretching across the window
+
 ## Known gaps / next
 - Import uses the system picker instead of a custom in-app grid (keeps the app permission-free)
 - Light theme not done yet (dark only)
 - Preview may show a brief hitch at clip joins; export is seamless
 - Windows preview: sped-up clips play silent (sound follows speed on export); photos ignore EXIF rotation
+- Windows editor still uses the phone layout (small video, full-width timeline); a proper desktop layout is planned
+- Blank frame colour is black only for now
 - Next: cloud sync (see below), then filters and animations
 - Audio: boosts above 100% are heard on export only; recorded voice files are not deleted with their project yet;
   no waveform on the bars yet; no "extract sound from a video" yet

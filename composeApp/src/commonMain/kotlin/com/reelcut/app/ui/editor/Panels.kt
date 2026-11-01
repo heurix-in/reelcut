@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,17 +62,21 @@ private val PanelShape = RoundedCornerShape(28.dp)
 
 @Composable
 fun FloatingPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .clip(PanelShape)
-            .background(Palette.GlassStrong)
-            .heightIn(max = 460.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) { content() }
+    // On a wide window (Windows) the panel stays a comfortable width, centred, instead of stretching edge to edge.
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+        Column(
+            modifier
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .clip(PanelShape)
+                .background(Palette.GlassStrong)
+                .heightIn(max = 460.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) { content() }
+    }
 }
 
 // ---------------- Trim ----------------

@@ -2,10 +2,16 @@ package com.reelcut.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
 import com.reelcut.app.desktop.Ffmpeg
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -22,44 +28,53 @@ actual val isPhone: Boolean = false
 
 actual val platformSupportsBlur: Boolean = true
 
+/** Opens the Windows file window (falls back to Java's older dialog) and hands back the chosen files. */
+private fun CoroutineScope.pickFiles(
+    title: String,
+    filterName: String,
+    extensions: Set<String>,
+    onPicked: (List<String>) -> Unit,
+) {
+    launch {
+        val native = withContext(Dispatchers.IO) { NativeFileDialog.open(title, filterName, extensions) }
+        val picked = native ?: run {
+            val dialog = FileDialog(null as Frame?, title, FileDialog.LOAD).apply {
+                isMultipleMode = true
+                // Windows uses the file pattern; other systems use the filter.
+                file = extensions.joinToString(";") { "*.$it" }
+                setFilenameFilter { _, name -> File(name).extension.lowercase() in extensions }
+            }
+            dialog.isVisible = true
+            dialog.files?.map { it.absolutePath }.orEmpty().also { dialog.dispose() }
+        }
+        onPicked(picked.filter { File(it).extension.lowercase() in extensions })
+    }
+}
+
 /** The Windows file picker (several files at once). */
 @Composable
-actual fun rememberMediaPicker(onPicked: (List<String>) -> Unit): (MediaFilter) -> Unit = remember {
-    { filter: MediaFilter ->
-        val dialog = FileDialog(null as Frame?, "Add videos or photos", FileDialog.LOAD).apply {
-            isMultipleMode = true
-            val exts = when (filter) {
-                MediaFilter.All -> Ffmpeg.mediaExtensions
-                MediaFilter.Video -> Ffmpeg.videoExtensions
-                MediaFilter.Photo -> Ffmpeg.mediaExtensions - Ffmpeg.videoExtensions
+actual fun rememberMediaPicker(onPicked: (List<String>) -> Unit): (MediaFilter) -> Unit {
+    val scope = rememberCoroutineScope()
+    val latest = rememberUpdatedState(onPicked)
+    return remember(scope) {
+        { filter: MediaFilter ->
+            val (name, exts) = when (filter) {
+                MediaFilter.All -> "Videos and photos" to Ffmpeg.mediaExtensions
+                MediaFilter.Video -> "Videos" to Ffmpeg.videoExtensions
+                MediaFilter.Photo -> "Photos" to (Ffmpeg.mediaExtensions - Ffmpeg.videoExtensions)
             }
-            // Windows uses the file pattern; other systems use the filter.
-            file = exts.joinToString(";") { "*.$it" }
-            setFilenameFilter { _, name -> File(name).extension.lowercase() in exts }
+            scope.pickFiles("Add videos or photos", name, exts) { latest.value(it) }
         }
-        dialog.isVisible = true
-        val picked = dialog.files?.map { it.absolutePath }.orEmpty()
-            .filter { File(it).extension.lowercase() in Ffmpeg.mediaExtensions }
-        dialog.dispose()
-        onPicked(picked)
     }
 }
 
 /** The Windows file picker for music and other sound files. */
 @Composable
-actual fun rememberAudioPicker(onPicked: (List<String>) -> Unit): () -> Unit = remember {
-    {
-        val exts = Ffmpeg.audioExtensions
-        val dialog = FileDialog(null as Frame?, "Add music or sound", FileDialog.LOAD).apply {
-            isMultipleMode = true
-            file = exts.joinToString(";") { "*.$it" }
-            setFilenameFilter { _, name -> File(name).extension.lowercase() in exts }
-        }
-        dialog.isVisible = true
-        val picked = dialog.files?.map { it.absolutePath }.orEmpty()
-            .filter { File(it).extension.lowercase() in exts }
-        dialog.dispose()
-        onPicked(picked)
+actual fun rememberAudioPicker(onPicked: (List<String>) -> Unit): () -> Unit {
+    val scope = rememberCoroutineScope()
+    val latest = rememberUpdatedState(onPicked)
+    return remember(scope) {
+        { scope.pickFiles("Add music or sound", "Sound files", Ffmpeg.audioExtensions) { latest.value(it) } }
     }
 }
 

@@ -249,6 +249,25 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         }
     }
 
+    /** Adds a black frame (3 s, change it with Length) where new clips go, and selects it. */
+    fun addBlank(onResult: (added: Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val p = _project.value ?: return@launch
+            val first = p.clips.firstOrNull()
+            val w = first?.rotatedWidth?.takeIf { it > 0 } ?: 1080
+            val h = first?.rotatedHeight?.takeIf { it > 0 } ?: 1920
+            val clip = engine.createBlankClip(0xFF000000, w, h)
+            if (clip == null) {
+                onResult(false)
+                return@launch
+            }
+            val at = insertIndexAtPlayhead()
+            commit { it.copy(clips = Timeline.insert(it.clips, at, listOf(clip))) }
+            _selectedId.value = clip.id
+            onResult(true)
+        }
+    }
+
     fun removeMissing() {
         val gone = _missing.value
         _missing.value = emptySet()

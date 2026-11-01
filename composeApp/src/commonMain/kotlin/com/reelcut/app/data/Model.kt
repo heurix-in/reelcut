@@ -54,6 +54,8 @@ data class Clip(
     val flipH: Boolean = false,
     /** Fill the canvas (crop) instead of fitting inside it. */
     val fill: Boolean = false,
+    /** A plain colour frame (black by default) made by the app; handled like a photo. */
+    val blank: Boolean = false,
 ) {
     val isPhoto: Boolean get() = kind == ClipKind.PHOTO
 
@@ -102,4 +104,20 @@ data class ExportSettings(
     val height: Int = 1080,
     val fps: Int = 30,
     val quality: Quality = Quality.HIGH,
+)
+
+/** A blank-frame clip showing the small colour picture at [uri], shaped like a [width] x [height] video. */
+fun blankClip(uri: String, width: Int, height: Int): Clip = Clip(
+    id = com.reelcut.app.newId(),
+    sourceUri = uri,
+    sourceDurationUs = Clip.MAX_PHOTO_US,
+    width = width,
+    height = height,
+    hasAudio = false,
+    trimStartUs = 0,
+    trimEndUs = Clip.DEFAULT_PHOTO_US,
+    kind = ClipKind.PHOTO,
+    mimeType = "image/png",
+    fill = true,
+    blank = true,
 )

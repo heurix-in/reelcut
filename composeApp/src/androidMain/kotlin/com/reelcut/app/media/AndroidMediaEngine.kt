@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Project
 import com.reelcut.app.engine.ExportItem
@@ -33,6 +34,20 @@ class AndroidMediaEngine(private val context: Context) : MediaEngine {
     override suspend fun importClips(refs: List<String>) = MediaProbe.clipsFrom(context, refs)
 
     override suspend fun importAudio(refs: List<String>) = MediaProbe.audioFrom(context, refs)
+
+    override suspend fun createBlankClip(argb: Long, width: Int, height: Int): Clip? = withContext(Dispatchers.IO) {
+        runCatching {
+            val file = File(context.filesDir, "blank/blank_" + argb.toString(16) + ".png")
+            if (!file.exists()) {
+                file.parentFile?.mkdirs()
+                val bmp = android.graphics.Bitmap.createBitmap(16, 16, android.graphics.Bitmap.Config.ARGB_8888)
+                bmp.eraseColor(argb.toInt())
+                file.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                bmp.recycle()
+            }
+            blankClip(Uri.fromFile(file).toString(), width, height)
+        }.getOrNull()
+    }
 
     override fun newRecorder(): VoiceRecorder = AndroidVoiceRecorder(context, File(context.filesDir, "voice"))
 

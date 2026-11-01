@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentCut
+import androidx.compose.material.icons.rounded.CropSquare
 import androidx.compose.material.icons.rounded.CropRotate
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Image
@@ -359,6 +360,11 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                                 Tool(Icons.Rounded.AutoAwesome, "Filter", soon = true) { soon("Filter") },
                                 Tool(Icons.Rounded.SwapHoriz, "Reorder", enabled = p.clips.size > 1) { vm.startReorder() },
                                 Tool(Icons.Rounded.AddPhotoAlternate, "Add") { addMedia(vm.insertIndexAtPlayhead(), MediaFilter.All) },
+                                Tool(Icons.Rounded.CropSquare, "Blank") {
+                                    vm.addBlank { ok ->
+                                        hint = if (ok) "Black frame added · tap Length to change it" else "Could not make a blank frame"
+                                    }
+                                },
                             ),
                         )
                     }

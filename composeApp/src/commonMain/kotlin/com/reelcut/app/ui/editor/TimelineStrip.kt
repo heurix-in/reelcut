@@ -424,7 +424,7 @@ private fun ClipView(
             val badge = buildList {
                 if (!clip.isPhoto && clip.speed != 1f) add(formatOneDecimal(clip.speed.toDouble()) + "×")
                 if (!clip.isPhoto && clip.volume == 0f) add("muted")
-                if (clip.isPhoto) add("photo")
+                if (clip.isPhoto) add(if (clip.blank) "blank" else "photo")
             }.joinToString(" · ")
             if (badge.isNotEmpty() && widthPx > 60f) {
                 Text(
