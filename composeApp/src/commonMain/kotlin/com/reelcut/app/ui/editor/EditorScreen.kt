@@ -240,7 +240,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                     AccentButton("Add videos or photos", { addMedia(0, MediaFilter.All) })
                 }
             }
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = hint != null,
                 enter = fadeIn(),
                 exit = fadeOut(),
