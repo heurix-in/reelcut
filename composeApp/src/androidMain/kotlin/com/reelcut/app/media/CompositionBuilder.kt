@@ -8,7 +8,6 @@ import android.net.Uri
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.OverlaySettings
-import androidx.media3.effect.StaticOverlaySettings
 import androidx.media3.effect.TextureOverlay
 import com.google.common.collect.ImmutableList
 import androidx.media3.common.C
@@ -199,7 +198,7 @@ object CompositionBuilder {
         override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
             val t = timelineUs(presentationTimeUs)
             val visible = t in startUs until endUs
-            return StaticOverlaySettings.Builder().setAlphaScale(if (visible) 1f else 0f).build()
+            return OverlaySettings.Builder().setAlphaScale(if (visible) 1f else 0f).build()
         }
     }
 
