@@ -1,28 +1,31 @@
 # Reelcut
 
-A personal, offline Android video editor in the spirit of InShot, with a dark rounded look and one lemon-yellow accent.
+A personal, offline video editor for **Android and Windows**, in the spirit of InShot, with a dark rounded look and one lemon-yellow accent.
 
-**Phase 1 (this build):** projects list, import videos, full-screen preview, filmstrip timeline (scrub, pinch-zoom, tap to select), trim, split, duplicate, reorder, delete, undo/redo, autosave, and MP4 export (720p/1080p, 30/60 fps) saved to `Movies/Reelcut`, with Play and Share.
+## Get the app
 
-**Phase 2:** canvas ratios (9:16, 4:5, 1:1, 16:9) with black or blurred background, photos as clips, speed 0.25×–4×, volume and mute, rotate, mirror, fit/fill.
+Every push to `main` builds on GitHub Actions and publishes one release with:
 
-## Get the APK
+- `reelcut-0.2.<n>.apk` – Android. Installs over earlier builds (same signing key) and keeps your projects.
+- `Reelcut-Setup-0.2.<n>.exe` – Windows installer (unsigned: choose **More info → Run anyway** the first time).
+- `Reelcut-Windows-portable-0.2.<n>.zip` – Windows without installing: unzip and run `Reelcut.exe`.
 
-Every push to `main` builds on GitHub Actions. The APK appears under **Releases** as `reelcut-0.1.<n>.apk`. All builds share one signing key, so a new APK installs over the old one and keeps your projects.
+## Features so far
 
-## Build locally
+- Projects list, import videos and photos, full preview
+- InShot-style editor: video on top, playback row, labelled toolbar that follows the selection, ruler timeline with + and Mute clip
+- Trim, split, duplicate, reorder, delete, undo/redo, autosave
+- Canvas 9:16 / 4:5 / 1:1 / 16:9 with black or blurred background; speed 0.25×–4×; volume and mute; rotate, mirror, fit/fill; photo length
+- MP4 export 720p/1080p, 30/60 fps (Android: Movies/Reelcut; Windows: Videos\Reelcut)
 
-1. Install Android Studio (JDK 17 + Android SDK 35).
-2. Run `./scripts/get-fonts.sh` once (downloads the Urbanist font, SIL Open Font License).
-3. `./gradlew assembleDebug` or open the folder in Android Studio.
-
-## Layout
+## Project layout (Compose Multiplatform, one module `composeApp`)
 
 | Path | What |
 | --- | --- |
-| `data/` | `Project`/`Clip` model, pure `Timeline` maths (unit-tested), JSON `ProjectRepository` |
-| `media/` | `PreviewController` (ExoPlayer), `CompositionBuilder` (shared by preview + export), `Exporter` (Transformer), `ThumbnailCache`, `MediaProbe` |
-| `editor/` | `EditorViewModel`: edits, undo/redo, autosave, trim/reorder modes, export state |
-| `ui/` | Compose screens: Home, Editor (timeline, trim/reorder panels, export sheet), theme |
+| `src/commonMain` | Shared: model, timeline maths (tested), projects, editor ViewModel, all screens |
+| `src/androidMain` | Android engine: Media3 preview/export, MediaStore, pickers |
+| `src/desktopMain` | Windows engine: FFmpeg (JavaCV) preview, thumbnails, ffmpeg export, file dialog |
+| `src/jvmShared` | JDK code compiled into both (project files, ids, dates) |
+| `src/commonTest` | Unit tests for timeline and canvas maths |
 
-Library versions are pinned to a known-good set: AGP 8.7.3, Kotlin 2.0.21, Compose BOM 2024.12.01, Media3 1.5.1.
+Build locally: `./scripts/get-fonts.sh`, then `./gradlew :composeApp:assembleDebug` (Android) or `./gradlew :composeApp:run` (desktop).

@@ -16,14 +16,23 @@
 - Frame tool: rotate 90°, mirror, fit/fill
 - Panel edits preview live and land as one undo step on Done; Cancel restores
 
+## Done – Stage A + Windows (1 Nov 2026, release v0.2.5)
+- Restructured into one shared Compose Multiplatform app; Windows .exe installer + portable zip built by CI
+- InShot-style editor in Gixlo colours: video on top, playback row (undo/redo, play, time), labelled toolbar
+  (main: Canvas, Text*, Audio*, Logo*, Filter*, Reorder, Add; clip: Split, Trim/Length, Speed, Volume, Rotate,
+  Duplicate, Reorder, Delete), ruler timeline with "+" and "Mute clip", duration badge on the selected clip
+  (* = marked "Soon")
+- Windows: FFmpeg preview with sound, mouse-wheel zoom on the timeline, export to Videos\Reelcut
+
 ## Known gaps / next
 - Import uses the system picker instead of a custom in-app grid (keeps the app permission-free)
 - Light theme not done yet (dark only)
 - Preview may show a brief hitch at clip joins; export is seamless
 - Solid colour backgrounds (only black and blur so far)
+- Windows preview: sped-up clips play silent (sound follows speed on export); photos ignore EXIF rotation
 - Phase 3: text and stickers on a multi-track timeline
 
-## Decisions (31 Oct 2026) – not started yet, waiting for go-ahead
+## Decisions (31 Oct 2026)
 1. One shared app for Android and Windows (Compose Multiplatform): shared UI, timeline and project code;
    Media3 engine on Android, bundled FFmpeg engine on Windows; CI builds the APK and a Windows .exe per release.
 2. Stage A layout follows InShot (video on top, playback row, labelled bottom toolbar that changes with
