@@ -321,7 +321,7 @@ fun TimelineStrip(
             }
         }
 
-        // Playhead: thin yellow line with a dot on top.
+        // Playhead: thin gold line with a dot on top.
         val lineX = with(density) { centre.toDp() }
         Box(
             Modifier
@@ -461,7 +461,7 @@ fun ThumbFrame(
     }
 }
 
-/** One chip per clip with its time range; the chip under the playhead is yellow. */
+/** One chip per clip with its time range; the chip under the playhead is gold. */
 @Composable
 fun TimeChips(
     clips: List<Clip>,

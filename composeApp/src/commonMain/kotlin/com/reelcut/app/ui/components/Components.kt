@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.reelcut.app.ui.theme.Palette
 import com.reelcut.app.ui.theme.Shape
 import com.reelcut.app.ui.theme.Type
+import com.reelcut.app.ui.theme.glass
 
 enum class RoundStyle { Glass, Accent, White, Ink, Stone }
 
@@ -44,12 +46,15 @@ fun RoundButton(
     iconSize: Dp = 20.dp,
     enabled: Boolean = true,
 ) {
-    val (bg, fg) = when (style) {
-        RoundStyle.Glass -> Palette.Glass to Palette.White
-        RoundStyle.Accent -> Palette.Accent to Palette.Ink
-        RoundStyle.White -> Palette.White to Palette.Ink
-        RoundStyle.Ink -> Palette.Ink to Palette.White
-        RoundStyle.Stone -> Palette.Stone to Palette.White
+    val fg = when (style) {
+        RoundStyle.Accent, RoundStyle.White -> Palette.Ink
+        else -> Palette.White
+    }
+    val surface = when (style) {
+        RoundStyle.Glass, RoundStyle.Stone -> Modifier.glass(CircleShape)
+        RoundStyle.Ink -> Modifier.glass(CircleShape, strong = true)
+        RoundStyle.Accent -> Modifier.clip(CircleShape).background(Palette.AccentBrush)
+        RoundStyle.White -> Modifier.clip(CircleShape).background(Palette.White)
     }
     Box(
         modifier = modifier
@@ -67,8 +72,7 @@ fun RoundButton(
         Box(
             Modifier
                 .size(size)
-                .clip(CircleShape)
-                .background(bg),
+                .then(surface),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription, tint = fg, modifier = Modifier.size(iconSize))
@@ -82,18 +86,21 @@ fun Pill(
     text: String,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
-    selectedColor: Color = Palette.White,
+    selectedColor: Color = Palette.Accent,
     onClick: (() -> Unit)? = null,
     style: TextStyle = Type.Label,
     padding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
     leading: ImageVector? = null,
 ) {
-    val bg = if (selected) selectedColor else Palette.Glass
     val fg = if (selected) Palette.Ink else Palette.White
+    val surface = if (selected) {
+        Modifier.clip(Shape.Pill).background(if (selectedColor == Palette.Accent) Palette.AccentBrush else SolidColor(selectedColor))
+    } else {
+        Modifier.glass(Shape.Pill)
+    }
     Row(
         modifier = modifier
-            .clip(Shape.Pill)
-            .background(bg)
+            .then(surface)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(padding),
         verticalAlignment = Alignment.CenterVertically,
@@ -104,13 +111,12 @@ fun Pill(
     }
 }
 
-/** Big yellow call-to-action. */
+/** Big gold call-to-action. */
 @Composable
 fun AccentButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Box(
         modifier = modifier
-            .clip(Shape.Pill)
-            .background(if (enabled) Palette.Accent else Palette.Stone)
+            .then(if (enabled) Modifier.clip(Shape.Pill).background(Palette.AccentBrush) else Modifier.glass(Shape.Pill))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center,
@@ -124,8 +130,7 @@ fun AccentButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
 fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(Shape.Pill)
-            .background(Palette.InkRaised)
+            .glass(Shape.Pill)
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center,

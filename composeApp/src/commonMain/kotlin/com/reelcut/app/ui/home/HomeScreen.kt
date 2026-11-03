@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +74,7 @@ import com.reelcut.app.ui.components.formatTime
 import com.reelcut.app.ui.theme.Palette
 import com.reelcut.app.ui.theme.Shape
 import com.reelcut.app.ui.theme.Type
+import com.reelcut.app.ui.theme.appBackground
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -124,7 +126,7 @@ fun HomeScreen(services: Services, onOpen: (String) -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Palette.InkDeep)
+            .appBackground()
     ) {
         Column(
             Modifier
@@ -176,7 +178,7 @@ fun HomeScreen(services: Services, onOpen: (String) -> Unit) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color(0x99000000))
+                    .background(Palette.Scrim)
                     .clickable(enabled = true, onClick = {}),
                 contentAlignment = Alignment.Center,
             ) {
@@ -271,6 +273,7 @@ private fun ProjectCard(
             .height(196.dp)
             .clip(Shape.Card)
             .background(Palette.InkRaised)
+            .border(0.75.dp, Brush.linearGradient(listOf(Palette.GlassEdgeHi, Palette.GlassEdgeLo)), Shape.Card)
             .combinedClickable(onClick = onOpen, onLongClick = { menu = true })
     ) {
         cover?.let {
@@ -279,7 +282,7 @@ private fun ProjectCard(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color(0xCC000000)))
+                .background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Palette.ScrimStrong))
         )
         Row(
             Modifier.align(Alignment.TopStart).padding(14.dp),

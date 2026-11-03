@@ -54,6 +54,7 @@ import com.reelcut.app.ui.components.RoundStyle
 import com.reelcut.app.ui.components.formatTime
 import com.reelcut.app.ui.theme.Palette
 import com.reelcut.app.ui.theme.Type
+import com.reelcut.app.ui.theme.glass
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -69,8 +70,7 @@ fun FloatingPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit
                 .widthIn(max = 640.dp)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
-                .clip(PanelShape)
-                .background(Palette.GlassStrong)
+                .glass(PanelShape, strong = true)
                 .heightIn(max = 460.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
@@ -81,7 +81,7 @@ fun FloatingPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit
 
 // ---------------- Trim ----------------
 
-/** Shows the whole source video; yellow handles set where the clip starts and ends. */
+/** Shows the whole source video; gold handles set where the clip starts and ends. */
 @Composable
 fun TrimPanel(
     clip: Clip,
@@ -180,14 +180,14 @@ private fun TrimBar(
                 .offset { IntOffset(handlePx.roundToInt(), 0) }
                 .width(with(density) { (sx - handlePx).coerceAtLeast(0f).toDp() })
                 .fillMaxHeight()
-                .background(Color(0xB3000000))
+                .background(Palette.Scrim)
         )
         Box(
             Modifier
                 .offset { IntOffset(ex.roundToInt(), 0) }
                 .width(with(density) { (constraints.maxWidth - handlePx - ex).coerceAtLeast(0f).toDp() })
                 .fillMaxHeight()
-                .background(Color(0xB3000000))
+                .background(Palette.Scrim)
         )
         // Yellow frame between the handles.
         Box(

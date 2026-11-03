@@ -6,6 +6,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -14,20 +15,47 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reelcut.app.UrbanistFamily
 
-// Palette from the Gixlo concept board.
+/**
+ * Warm near-black with one gold accent. Surfaces are "glass": a translucent light gradient over a
+ * dark scrim with a hairline edge (see Glass.kt). Gold is always a fill with dark content on it.
+ */
 object Palette {
-    val Ink = Color(0xFF252525)
-    val InkDeep = Color(0xFF1C1C1B)
-    val InkRaised = Color(0xFF323230)
-    val Accent = Color(0xFFEEEA7A)
+    val Ink = Color(0xFF1B1915)
+    val InkDeep = Color(0xFF100F0D)
+    val InkRaised = Color(0xFF26231E)
+    val Accent = Color(0xFFD4AF5A)
+    val AccentLight = Color(0xFFEAD08C)
+    val AccentDeep = Color(0xFFB38B3A)
     val Stone = Color(0xFF5C574D)
     val White = Color(0xFFFFFFFF)
-    val Cream = Color(0xFFF4F4D7)
-    val Glass = Color(0xB3252525)      // floating controls over video, ~70%
-    val GlassStrong = Color(0xD9252525) // timeline strip, ~85%
-    val Muted = Color(0x99FFFFFF)
+    val Cream = Color(0xFFF3ECD8)
+    val Glass = Color(0x99181510)       // flat translucent dark, for small badges over media
+    val GlassStrong = Color(0xCC14120E)
+    val Muted = Color(0xA6FFFFFF)
     val Danger = Color(0xFFE8806E)
-    val Line = Color(0x33FFFFFF)
+    val Line = Color(0x2EFFFFFF)
+
+    // Glass surface parts
+    val GlassScrim = Color(0x59000000)          // keeps text readable over bright video
+    val GlassScrimStrong = Color(0x80000000)
+    val GlassTop = Color(0x2BFFFFFF)
+    val GlassBottom = Color(0x0FFFFFFF)
+    val GlassTopStrong = Color(0x38FFFFFF)
+    val GlassBottomStrong = Color(0x14FFFFFF)
+    val GlassEdgeHi = Color(0x52FFFFFF)
+    val GlassEdgeLo = Color(0x0FFFFFFF)
+
+    // Darkening over pictures and video
+    val Scrim = Color(0x99000000)
+    val ScrimStrong = Color(0xCC000000)
+
+    // Screen background and the soft fade at the edge of the timeline
+    val BgTop = Color(0xFF16140F)
+    val BgBottom = Color(0xFF0C0B09)
+    val SheetFade = Color(0xF2171613)
+
+    /** Gold fill for buttons, the active tool and selected chips. */
+    val AccentBrush: Brush = Brush.verticalGradient(listOf(AccentLight, Accent))
 }
 
 val Urbanist: FontFamily get() = UrbanistFamily

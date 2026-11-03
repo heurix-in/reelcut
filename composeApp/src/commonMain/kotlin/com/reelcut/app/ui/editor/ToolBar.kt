@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reelcut.app.ui.theme.Palette
 import com.reelcut.app.ui.theme.Type
+import com.reelcut.app.ui.theme.glass
 
 /** One labelled tool in the bottom toolbar. */
 data class Tool(
@@ -39,7 +40,7 @@ data class Tool(
     val enabled: Boolean = true,
     /** Planned for a later update: shown with a "Soon" tag. */
     val soon: Boolean = false,
-    /** Drawn with a yellow circle (an option that is switched on). */
+    /** Drawn with a gold circle (an option that is switched on). */
     val active: Boolean = false,
     val onClick: () -> Unit,
 )
@@ -88,8 +89,10 @@ private fun ToolItem(tool: Tool) {
             Box(
                 Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .background(if (tool.active) Palette.Accent else Palette.InkRaised),
+                    .then(
+                        if (tool.active) Modifier.clip(CircleShape).background(Palette.AccentBrush)
+                        else Modifier.glass(CircleShape)
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

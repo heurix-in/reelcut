@@ -12,7 +12,8 @@ Progress and known issues: PROGRESS.md.
 - All times in microseconds (Long). Timeline maths lives in `data/Timeline.kt` with unit tests; keep it pure.
 - Never block the main thread with decoding or file IO.
 - Colours, type and shapes live in `ui/theme/Theme.kt`; don't hard-code them in screens.
-  Look: dark #252525, accent #EEEA7A (always a fill with dark content), stone #5C574D, round buttons, pills.
+  Look: warm near-black (#1B1915), one gold accent (#D4AF5A, always a fill with dark content), quiet glass surfaces
+  (dark scrim + light gradient + hairline edge: `Modifier.glass()`, `appBackground()` in ui/theme/Glass.kt), round buttons, pills.
 - Do not change the Project schema without keeping old JSON readable (`ignoreUnknownKeys`, defaults).
 - After each change: commit and push; CI tests, builds the APK + Windows installer/zip and publishes one release.
   Build logs land on the `ci-log` branch. Docs-only commits use [skip ci].

@@ -104,7 +104,7 @@ fun TextPanel(
                         )
                     }
                 }
-                Text("Drag the text on the video to move it. Pinch, or drag the yellow dot, to resize and turn it.",
+                Text("Drag the text on the video to move it. Pinch, or drag the gold dot, to resize and turn it.",
                     style = Type.Label, color = Palette.Muted)
             }
             TextTab.Font -> {

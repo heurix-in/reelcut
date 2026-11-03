@@ -94,7 +94,10 @@ import com.reelcut.app.ui.components.RoundStyle
 import com.reelcut.app.ui.components.StickerDialog
 import com.reelcut.app.ui.components.formatTime
 import com.reelcut.app.ui.theme.Palette
+import com.reelcut.app.ui.theme.Shape
 import com.reelcut.app.ui.theme.Type
+import com.reelcut.app.ui.theme.appBackground
+import com.reelcut.app.ui.theme.glass
 import kotlinx.coroutines.delay
 
 /**
@@ -193,7 +196,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
 
     if (loadFailed) {
         Column(
-            Modifier.fillMaxSize().background(Palette.InkDeep).statusBarsPadding().padding(24.dp),
+            Modifier.fillMaxSize().appBackground().statusBarsPadding().padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("This project could not be opened.", style = Type.Title)
@@ -203,7 +206,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
     }
     val p = project
     if (p == null) {
-        Box(Modifier.fillMaxSize().background(Palette.InkDeep), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().appBackground(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Palette.Accent)
         }
         return
@@ -217,7 +220,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Palette.InkDeep)
+            .appBackground()
     ) {
         // ---- Top bar ----
         Row(
@@ -239,8 +242,10 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
             val canExport = p.clips.isNotEmpty() && mode == Mode.Edit
             Box(
                 Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (canExport) Palette.Accent else Palette.Stone)
+                    .then(
+                        if (canExport) Modifier.clip(RoundedCornerShape(50)).background(Palette.AccentBrush)
+                        else Modifier.glass(Shape.Pill)
+                    )
                     .clickable(enabled = canExport) {
                         vm.pause()
                         vm.resetExport()
@@ -346,8 +351,9 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .then(if (mode == Mode.Edit) Modifier.glass(Shape.Sheet) else Modifier)
                 .navigationBarsPadding()
-                .padding(bottom = 6.dp),
+                .padding(top = if (mode == Mode.Edit) 4.dp else 0.dp, bottom = 6.dp),
         ) {
             when (mode) {
                 Mode.Edit -> {
@@ -646,9 +652,9 @@ private fun TimelineArea(
                 .height(60.dp)
                 .background(
                     Brush.horizontalGradient(
-                        0f to Palette.InkDeep,
-                        0.8f to Palette.InkDeep,
-                        1f to Palette.InkDeep.copy(alpha = 0f),
+                        0f to Palette.SheetFade,
+                        0.8f to Palette.SheetFade,
+                        1f to Palette.SheetFade.copy(alpha = 0f),
                     )
                 )
                 .padding(start = 10.dp, end = 18.dp),
@@ -659,7 +665,7 @@ private fun TimelineArea(
                 Modifier
                     .size(46.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Palette.Accent)
+                    .background(Palette.AccentBrush)
                     .clickable(onClick = onAdd),
                 contentAlignment = Alignment.Center,
             ) {

@@ -1,6 +1,6 @@
 # Reelcut
 
-A personal, offline video editor for **Android and Windows**, in the spirit of InShot, with a dark rounded look and one lemon-yellow accent.
+A personal, offline video editor for **Android and Windows**, in the spirit of InShot, with a dark, soft glass look and one gold accent.
 
 ## Get the app
 
