@@ -57,6 +57,9 @@ data class Overlay(
         const val MIN_SCALE = 0.2f
         const val MAX_SCALE = 6f
         const val DEFAULT_TEXT_US = 3_000_000L
+
+        /** Size of an emoji sticker (it is text, scaled up). */
+        const val STICKER_SCALE = 2.6f
         const val MIN_US = 100_000L
     }
 }

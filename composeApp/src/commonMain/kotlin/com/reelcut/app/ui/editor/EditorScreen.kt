@@ -42,7 +42,9 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.VolumeOff
@@ -89,6 +91,7 @@ import com.reelcut.app.ui.components.Pill
 import com.reelcut.app.ui.components.RenameDialog
 import com.reelcut.app.ui.components.RoundButton
 import com.reelcut.app.ui.components.RoundStyle
+import com.reelcut.app.ui.components.StickerDialog
 import com.reelcut.app.ui.components.formatTime
 import com.reelcut.app.ui.theme.Palette
 import com.reelcut.app.ui.theme.Type
@@ -124,6 +127,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
     var dpPerSecond by rememberSaveable { mutableFloatStateOf(56f) }
     var renaming by remember { mutableStateOf(false) }
     var showExport by remember { mutableStateOf(false) }
+    var showStickers by remember { mutableStateOf(false) }
     var insertAt by remember { mutableIntStateOf(-1) }
     var hint by remember { mutableStateOf<String?>(null) }
 
@@ -359,6 +363,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                             tools = listOf(
                                 Tool(Icons.Rounded.AspectRatio, "Canvas", enabled = p.clips.isNotEmpty()) { vm.openPanel(Mode.Canvas) },
                                 Tool(Icons.Rounded.TextFields, "Text", enabled = p.clips.isNotEmpty()) { vm.addText() },
+                                Tool(Icons.Rounded.EmojiEmotions, "Sticker", enabled = p.clips.isNotEmpty()) { showStickers = true },
                                 Tool(Icons.Rounded.MusicNote, "Audio", enabled = p.clips.isNotEmpty()) { vm.openAudio() },
                                 Tool(Icons.Rounded.Image, "Logo", enabled = p.clips.isNotEmpty()) { pickLogo(MediaFilter.Photo) },
                                 Tool(Icons.Rounded.AutoAwesome, "Filter", soon = true) { soon("Filter") },
@@ -528,6 +533,13 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
             onConfirm = vm::removeMissing,
         )
     }
+    if (showStickers) {
+        StickerDialog(onDismiss = { showStickers = false }) { emoji ->
+            showStickers = false
+            vm.addSticker(emoji)
+        }
+    }
+
     if (showExport) {
         ExportSheet(
             engine = services.engine,
@@ -558,6 +570,11 @@ private fun clipTools(vm: EditorViewModel, p: Project, isPhoto: Boolean, hint: (
         add(Tool(Icons.Rounded.SettingsEthernet, "Trim") { vm.startTrim() })
         add(Tool(Icons.Rounded.Speed, "Speed") { vm.openPanel(Mode.Speed) })
         add(Tool(Icons.Rounded.VolumeUp, "Volume") { vm.openPanel(Mode.Volume) })
+        add(
+            Tool(Icons.Rounded.Audiotrack, "Extract", enabled = vm.canExtractAudio()) {
+                hint(if (vm.extractAudio()) "Sound extracted · find it under Audio" else "This clip's sound can't be extracted")
+            }
+        )
     }
     add(Tool(Icons.Rounded.CropRotate, "Rotate") { vm.openPanel(Mode.Transform) })
     add(Tool(Icons.Rounded.ContentCopy, "Duplicate") { vm.duplicateTarget(); hint("Clip duplicated") })

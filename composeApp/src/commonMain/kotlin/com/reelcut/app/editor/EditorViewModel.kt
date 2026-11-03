@@ -480,12 +480,23 @@ class EditorViewModel(private val services: Services, private val projectId: Str
     }
 
     /** Adds an empty text box at the playhead and opens the Text panel. */
-    fun addText() {
+    fun addText() = addTextBox("", scale = 1f)
+
+    /** Adds an emoji at the playhead, big, and opens the Text panel on it (move, resize, time it). */
+    fun addSticker(emoji: String) {
+        if (emoji.isBlank()) return
+        addTextBox(emoji, scale = Overlay.STICKER_SCALE)
+    }
+
+    private fun addTextBox(text: String, scale: Float) {
         val p = _project.value ?: return
         if (p.clips.isEmpty()) return
         preview.pause()
         val (s, e) = OverlayMath.rangeAt(_playheadUs.value, p.durationUs, Overlay.DEFAULT_TEXT_US)
-        val o = Overlay(id = ProjectRepository.newId(), kind = OverlayKind.TEXT, startUs = s, endUs = e, y = 0.5f)
+        val o = Overlay(
+            id = ProjectRepository.newId(), kind = OverlayKind.TEXT, startUs = s, endUs = e,
+            y = 0.5f, text = text, scale = scale,
+        )
         stage { it.copy(overlays = it.overlays + o) }
         openOverlayPanel(o, isNew = true, snapshot = p)
     }
@@ -603,6 +614,43 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         val id = _selectedAudioId.value ?: return
         stage { p -> p.copy(audio = p.audio.filterNot { it.id == id }) }
         _selectedAudioId.value = null
+    }
+
+    /** The clip the tools act on, or null. */
+    private fun targetClip(): Clip? = _project.value?.clips?.getOrNull(targetIndex())
+
+    /**
+     * True when the clip the tools act on has sound to pull out: a video with sound, not muted, at
+     * normal speed (a sound has no speed of its own, so it could not follow a sped-up clip).
+     */
+    fun canExtractAudio(): Boolean =
+        targetClip()?.let { !it.isPhoto && it.hasAudio && it.speed == 1f && it.volume > 0f } ?: false
+
+    /**
+     * Pulls the sound out of the clip the tools act on. It becomes a sound of its own under the
+     * timeline, starting where the clip starts and cut like the clip, and the clip goes silent.
+     * The sound stays where it is if the clip is moved or cut later. False if it cannot be done.
+     */
+    fun extractAudio(): Boolean {
+        val p = _project.value ?: return false
+        val i = targetIndex()
+        val clip = p.clips.getOrNull(i) ?: return false
+        if (!canExtractAudio()) return false
+        val sound = AudioMath.normalise(
+            AudioClip(
+                id = ProjectRepository.newId(),
+                name = "Sound from clip ${i + 1}",
+                sourceUri = clip.sourceUri,
+                sourceDurationUs = clip.sourceDurationUs,
+                trimStartUs = clip.trimStartUs,
+                trimEndUs = clip.trimEndUs,
+                startUs = Timeline.startsUs(p.clips)[i],
+                volume = clip.volume,
+            ),
+            p.durationUs,
+        )
+        commit { it.copy(clips = Timeline.update(it.clips, i) { c -> c.copy(volume = 0f) }, audio = it.audio + sound) }
+        return true
     }
 
     /** Switches the video clips' own sound on or off (part of the open panel's edit). */

@@ -674,6 +674,97 @@ class EditorViewModelTest {
         assertEquals(Mode.Edit, vm.mode.value)
     }
 
+    // ---------- Extract sound / stickers ----------
+
+    @Test
+    fun extractingSoundMakesItItsOwnSoundAndSilencesTheClip() = editorTest(
+        initial = project(listOf(sampleClip("a"), sampleClip("b", durationUs = 6_000_000L, trimStartUs = 1_000_000L, trimEndUs = 5_000_000L).copy(volume = 1.5f))),
+    ) { vm ->
+        vm.select("b")
+        assertTrue(vm.canExtractAudio())
+        assertTrue(vm.extractAudio())
+
+        assertEquals(0f, vm.p().clips[1].volume)
+        val sound = vm.p().audio.single()
+        assertEquals("content://media/b", sound.sourceUri)
+        assertEquals(AudioKind.MUSIC, sound.kind)
+        assertEquals(4_000_000L, sound.startUs) // where clip b starts on the timeline
+        assertEquals(1_000_000L, sound.trimStartUs)
+        assertEquals(5_000_000L, sound.trimEndUs)
+        assertEquals(1.5f, sound.volume)
+        assertEquals(sound.durationUs, vm.p().clips[1].durationUs)
+
+        // One step brings back the clip's sound and removes the extracted one.
+        vm.undo()
+        assertTrue(vm.p().audio.isEmpty())
+        assertEquals(1.5f, vm.p().clips[1].volume)
+        assertFalse(vm.canUndo.value)
+    }
+
+    @Test
+    fun extractingActsOnTheClipUnderThePlayheadWhenNothingIsSelected() = editorTest { vm ->
+        vm.seek(9_000_000L, exact = true) // inside c
+        assertTrue(vm.extractAudio())
+        assertEquals(8_000_000L, vm.p().audio.single().startUs)
+        assertEquals(0f, vm.p().clips[2].volume)
+        assertEquals(1f, vm.p().clips[0].volume)
+    }
+
+    @Test
+    fun soundCannotBeExtractedFromPhotosSilentClipsMutedClipsOrSpedUpClips() {
+        val clips = listOf(
+            sampleClip("photo").copy(kind = com.reelcut.app.data.ClipKind.PHOTO, hasAudio = false),
+            sampleClip("silent").copy(hasAudio = false),
+            sampleClip("muted").copy(volume = 0f),
+            sampleClip("fast").copy(speed = 2f),
+        )
+        editorTest(initial = project(clips)) { vm ->
+            for (id in listOf("photo", "silent", "muted", "fast")) {
+                vm.select(id)
+                assertFalse(vm.canExtractAudio(), id)
+                assertFalse(vm.extractAudio(), id)
+                vm.deselect()
+            }
+            assertTrue(vm.p().audio.isEmpty())
+            assertEquals(clips, vm.p().clips)
+            assertFalse(vm.canUndo.value)
+        }
+    }
+
+    @Test
+    fun aStickerIsABigEmojiTextOpenedForEditing() = editorTest { vm ->
+        vm.seek(2_000_000L, exact = true)
+        vm.addSticker("🔥")
+
+        assertEquals(Mode.Text, vm.mode.value)
+        assertTrue(vm.isNewOverlay)
+        val o = vm.p().overlays.single()
+        assertEquals(OverlayKind.TEXT, o.kind)
+        assertEquals("🔥", o.text)
+        assertEquals(com.reelcut.app.data.Overlay.STICKER_SCALE, o.scale)
+        assertEquals(2_000_000L, o.startUs)
+        assertEquals(5_000_000L, o.endUs)
+
+        vm.closePanel(apply = true)
+        assertEquals("🔥", vm.p().overlays.single().text) // an emoji is not an "empty" text box
+        vm.undo()
+        assertTrue(vm.p().overlays.isEmpty())
+    }
+
+    @Test
+    fun stickersNeedAVideoAndAnEmoji() = editorTest { vm ->
+        vm.addSticker("  ")
+        assertEquals(Mode.Edit, vm.mode.value)
+        assertTrue(vm.p().overlays.isEmpty())
+    }
+
+    @Test
+    fun stickersCannotBeAddedToAnEmptyProject() = editorTest(initial = project(emptyList())) { vm ->
+        vm.addSticker("🔥")
+        assertEquals(Mode.Edit, vm.mode.value)
+        assertTrue(vm.p().overlays.isEmpty())
+    }
+
     // ---------- Voice-over ----------
 
     private fun voice() = AudioClip(
