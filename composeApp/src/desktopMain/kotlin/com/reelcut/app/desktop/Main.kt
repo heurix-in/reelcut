@@ -9,6 +9,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.reelcut.app.App
 import com.reelcut.app.FileProjectStore
+import com.reelcut.app.VoiceFolder
 import com.reelcut.app.data.ProjectRepository
 import com.reelcut.app.engine.Services
 import kotlinx.coroutines.CoroutineScope
@@ -25,7 +26,7 @@ fun main() {
     val dataDir = System.getenv("APPDATA")?.let { File(it, "Reelcut") }
         ?: File(System.getProperty("user.home"), ".reelcut")
     Services.current = Services(
-        repository = ProjectRepository(FileProjectStore(File(dataDir, "projects"))),
+        repository = ProjectRepository(FileProjectStore(File(dataDir, "projects")), VoiceFolder(File(dataDir, "voice"))),
         engine = DesktopMediaEngine(File(dataDir, "voice")),
         appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
     )

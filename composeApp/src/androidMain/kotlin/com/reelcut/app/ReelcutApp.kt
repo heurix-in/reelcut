@@ -13,7 +13,7 @@ class ReelcutApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Services.current = Services(
-            repository = ProjectRepository(FileProjectStore(File(filesDir, "projects"))),
+            repository = ProjectRepository(FileProjectStore(File(filesDir, "projects")), VoiceFolder(File(filesDir, "voice"))),
             engine = AndroidMediaEngine(this),
             appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
         )

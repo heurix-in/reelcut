@@ -2,10 +2,12 @@ package com.reelcut.app
 
 import com.reelcut.app.data.ProjectStore
 import com.reelcut.app.data.StoredProject
+import com.reelcut.app.data.VoiceFiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URI
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -22,6 +24,18 @@ actual fun nowMillis(): Long = System.currentTimeMillis()
 
 actual fun formatDate(millis: Long, pattern: String): String =
     SimpleDateFormat(pattern, Locale.getDefault()).format(Date(millis))
+
+/**
+ * Deletes recorded voice-overs, but only files directly inside [dir]: a project can refer to a
+ * file by path or `file:` URI, and anything outside the app's voice folder is left alone.
+ */
+class VoiceFolder(private val dir: File) : VoiceFiles {
+    override fun delete(ref: String) {
+        val file = if (ref.startsWith("file:")) File(URI(ref)) else File(ref)
+        val canonical = file.canonicalFile
+        if (canonical.parentFile == dir.canonicalFile) canonical.delete()
+    }
+}
 
 /**
  * One JSON file per project in [dir]. A save writes `<id>.json.tmp`, flushes it to disk, then swaps
