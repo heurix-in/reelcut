@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -237,11 +238,11 @@ class DesktopPreviewPlayer : PreviewPlayer {
     }
 
     @Composable
-    override fun Surface(modifier: Modifier) {
+    override fun Surface(modifier: Modifier, colorFilter: ColorFilter?) {
         val img by frame.collectAsState()
         val current = img
         if (current != null) {
-            Image(current, null, contentScale = ContentScale.FillBounds, modifier = modifier)
+            Image(current, null, contentScale = ContentScale.FillBounds, colorFilter = colorFilter, modifier = modifier)
         } else {
             Box(modifier)
         }

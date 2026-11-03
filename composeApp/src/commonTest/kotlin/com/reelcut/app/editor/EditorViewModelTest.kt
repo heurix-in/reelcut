@@ -471,6 +471,75 @@ class EditorViewModelTest {
         assertEquals(Mode.Canvas, vm.mode.value)
     }
 
+    // ---------- Filters ----------
+
+    @Test
+    fun aFilterIsAPanelEditThatCountsOnceOnDone() = editorTest { vm ->
+        vm.select("a")
+        vm.openPanel(Mode.Filter)
+        vm.setPreset(com.reelcut.app.data.LookPresets.byId("warm"))
+        vm.setLook(vm.panelClip()!!.look.copy(brightness = 0.2f))
+        assertEquals(0.2f, vm.p().clips[0].look.brightness)
+        assertNull(vm.p().clips[0].filterId) // adjusted by hand: no longer the preset
+        assertEquals(vm.p().clips, engine.preview.clips)
+        assertFalse(vm.canUndo.value)
+
+        vm.closePanel(apply = true)
+        assertTrue(vm.canUndo.value)
+        vm.undo()
+        assertTrue(vm.p().clips[0].look.isNeutral)
+        assertFalse(vm.canUndo.value)
+    }
+
+    @Test
+    fun aPresetSetsTheLookAndRemembersWhichOne() = editorTest { vm ->
+        vm.select("b")
+        vm.openPanel(Mode.Filter)
+        val mono = com.reelcut.app.data.LookPresets.byId("mono")!!
+        vm.setPreset(mono)
+        assertEquals(mono.look, vm.p().clips[1].look)
+        assertEquals("mono", vm.p().clips[1].filterId)
+        vm.setPreset(null)
+        assertTrue(vm.p().clips[1].look.isNeutral)
+        assertNull(vm.p().clips[1].filterId)
+    }
+
+    @Test
+    fun sliderValuesAreHeldInsideTheirRange() = editorTest { vm ->
+        vm.select("a")
+        vm.openPanel(Mode.Filter)
+        vm.setLook(com.reelcut.app.data.Look(brightness = 5f, contrast = -5f))
+        assertEquals(1f, vm.p().clips[0].look.brightness)
+        assertEquals(-1f, vm.p().clips[0].look.contrast)
+    }
+
+    @Test
+    fun cancellingAFilterRestoresTheClip() = editorTest { vm ->
+        vm.select("a")
+        vm.openPanel(Mode.Filter)
+        vm.setPreset(com.reelcut.app.data.LookPresets.byId("noir"))
+        vm.closePanel(apply = false)
+        assertEquals(threeClips(), vm.p().clips)
+        assertFalse(vm.canUndo.value)
+    }
+
+    @Test
+    fun applyToAllGivesEveryClipTheSameFilter() = editorTest { vm ->
+        vm.select("a")
+        vm.openPanel(Mode.Filter)
+        vm.setPreset(com.reelcut.app.data.LookPresets.byId("vivid"))
+        val chosen = vm.panelClip()!!
+        vm.stageAll { c -> c.copy(look = chosen.look, filterId = chosen.filterId) }
+        vm.closePanel(apply = true)
+        assertTrue(vm.p().clips.all { it.filterId == "vivid" && it.look == chosen.look })
+    }
+
+    @Test
+    fun theFilterPanelNeedsAClip() = editorTest(initial = project(emptyList())) { vm ->
+        vm.openPanel(Mode.Filter)
+        assertEquals(Mode.Edit, vm.mode.value)
+    }
+
     // ---------- Autosave ----------
 
     @Test

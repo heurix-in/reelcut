@@ -56,6 +56,10 @@ data class Clip(
     val fill: Boolean = false,
     /** A plain colour frame (black by default) made by the app; handled like a photo. */
     val blank: Boolean = false,
+    /** Colour treatment: brightness, contrast, saturation, warmth. */
+    val look: Look = Look(),
+    /** The preset the look started from (see [LookPresets]), so its chip stays highlighted. */
+    val filterId: String? = null,
 ) {
     val isPhoto: Boolean get() = kind == ClipKind.PHOTO
 

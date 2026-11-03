@@ -76,6 +76,17 @@
   Underline and ABC (all caps) toggles; letter spacing. Old projects open unchanged
 - Build log prints every test and result, so CI shows which tests ran
 
+## Done – Filters (3 Nov 2026)
+- Filter tool (main toolbar, and per clip): presets (Vivid, Warm, Cool, Sunset, Fade, Mono, Noir) and sliders for
+  brightness, contrast, saturation and warmth; "Apply to all"; panel edits are one undo step. Photos too
+- One definition of the colour change (`data/Look.kt`, `LookMath.affine`) drives all three places: the preview
+  (Compose colour matrix; on Android the TextureView layer paint), the Android export (Media3 `RgbMatrix` before
+  framing) and the Windows export (a 3D lookup table fed to ffmpeg's `lut3d`, before framing). The bars around the
+  picture are not tinted; the blurred background copy is
+- Checked: the maths (all three forms agree, 13 tests) and the real Windows export graph run through ffmpeg:
+  108 colour/look combinations, worst difference 5/255. NOT checked: the Android export and the Android and
+  Windows previews on a screen
+
 ## Verified vs not (3 Nov 2026 work)
 - Compiled and tested on the JVM (desktop target) with a throwaway harness: all shared code, the desktop engine and
   all 123 tests pass. The harness stubs the AndroidX lifecycle classes, so the `EditorViewModel` tests have run

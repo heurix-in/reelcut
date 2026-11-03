@@ -2,6 +2,8 @@ package com.reelcut.app.media
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Paint
+import android.view.TextureView
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
@@ -11,6 +13,9 @@ import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.image.ImageOutput
 import android.view.LayoutInflater
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asAndroidColorFilter
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
@@ -171,7 +176,11 @@ class AndroidPreviewPlayer(context: Context) : PreviewPlayer {
     }
 
     @Composable
-    override fun Surface(modifier: Modifier) {
+    override fun Surface(modifier: Modifier, colorFilter: ColorFilter?) {
+        // The video is drawn by a TextureView, whose layer paint can carry the clip's colour look.
+        val lookPaint = remember(colorFilter) {
+            colorFilter?.let { Paint().apply { this.colorFilter = it.asAndroidColorFilter() } }
+        }
         AndroidView(
             modifier = modifier,
             factory = { ctx ->
@@ -180,7 +189,10 @@ class AndroidPreviewPlayer(context: Context) : PreviewPlayer {
                     this.player = this@AndroidPreviewPlayer.player
                 }
             },
-            update = { it.player = player },
+            update = {
+                it.player = player
+                (it.videoSurfaceView as? TextureView)?.setLayerPaint(lookPaint)
+            },
             onRelease = { it.player = null },
         )
     }

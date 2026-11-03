@@ -11,6 +11,8 @@ import com.reelcut.app.data.OverlayKind
 import com.reelcut.app.data.OverlayMath
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.ExportSettings
+import com.reelcut.app.data.Look
+import com.reelcut.app.data.LookPreset
 import com.reelcut.app.data.Project
 import com.reelcut.app.data.ProjectRepository
 import com.reelcut.app.data.Timeline
@@ -36,7 +38,7 @@ sealed interface ExportState {
     data class Failed(val message: String) : ExportState
 }
 
-enum class Mode { Edit, Trim, Reorder, Speed, Volume, Transform, Canvas, Duration, Text, Logo, Audio }
+enum class Mode { Edit, Trim, Reorder, Speed, Volume, Transform, Canvas, Duration, Text, Logo, Audio, Filter }
 
 /**
  * Holds the open project and every edit made to it. Each edit makes a new immutable Project;
@@ -427,6 +429,12 @@ class EditorViewModel(private val services: Services, private val projectId: Str
     }
 
     fun setVolume(volume: Float) = stageClip { it.copy(volume = volume.coerceIn(0f, Clip.MAX_VOLUME)) }
+
+    /** Sets the clip's colours from the sliders; it no longer counts as a preset. */
+    fun setLook(look: Look) = stageClip { it.copy(look = look.coerced(), filterId = null) }
+
+    /** Starts from a preset look (null = no filter). */
+    fun setPreset(preset: LookPreset?) = stageClip { it.copy(look = preset?.look ?: Look(), filterId = preset?.id) }
 
     fun setPhotoDuration(durationUs: Long) = stageClip {
         val d = durationUs.coerceIn(Timeline.MIN_CLIP_US, Clip.MAX_PHOTO_US - it.trimStartUs)

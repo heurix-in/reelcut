@@ -2,6 +2,7 @@ package com.reelcut.app.editor
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import com.reelcut.app.data.AudioClip
 import com.reelcut.app.data.Clip
@@ -80,7 +81,7 @@ class FakePreview : PreviewPlayer {
     }
 
     @Composable
-    override fun Surface(modifier: Modifier) {
+    override fun Surface(modifier: Modifier, colorFilter: ColorFilter?) {
     }
 
     override fun release() {

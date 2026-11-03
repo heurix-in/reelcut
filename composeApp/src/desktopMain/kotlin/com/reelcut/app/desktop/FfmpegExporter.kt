@@ -2,6 +2,8 @@ package com.reelcut.app.desktop
 
 import com.reelcut.app.data.CanvasMath
 import com.reelcut.app.data.ExportSettings
+import com.reelcut.app.data.Look
+import com.reelcut.app.data.LookMath
 import com.reelcut.app.data.Project
 import com.reelcut.app.engine.ExportFailed
 import androidx.compose.ui.graphics.toAwtImage
@@ -53,8 +55,13 @@ class FfmpegExporter {
                 ImageIO.write(layer.image.toAwtImage(), "png", f)
                 Triple(f, layer.startUs, layer.endUs)
             }
-            val args = buildArgs(project, settings, out, layerFiles)
+            // One colour lookup file per distinct look. ffmpeg runs in this folder so the filter can use a plain file name.
+            val lookFiles = clips.map { it.look }.filter { !it.isNeutral }.distinct()
+                .mapIndexed { i, look -> look to "look$i.cube" }.toMap()
+            lookFiles.forEach { (look, name) -> File(layerDir, name).writeText(LookMath.cube(look)) }
+            val args = buildArgs(project, settings, out, layerFiles, lookFiles)
             val process = ProcessBuilder(listOf(Ffmpeg.executable) + args)
+                .directory(layerDir)
                 .redirectError(log)
                 .start()
             val totalUs = clips.sumOf { it.durationUs }.coerceAtLeast(1L)
@@ -107,6 +114,8 @@ class FfmpegExporter {
         settings: ExportSettings,
         out: File,
         layers: List<Triple<File, Long, Long>> = emptyList(),
+        /** Colour lookup file name for each clip look (files sit in ffmpeg's working folder). */
+        lookFiles: Map<Look, String> = emptyMap(),
     ): List<String> {
         val clips = project.clips
         val size = CanvasMath.outputSize(clips, project.canvas, settings.height)
@@ -147,6 +156,8 @@ class FfmpegExporter {
                 180 -> v.append(",hflip,vflip")
                 270 -> v.append(",transpose=2")
             }
+            // Colour look, before framing so the bars around the picture are not tinted.
+            lookFiles[c.look]?.let { v.append(",format=rgb24,lut3d=file=$it") }
             v.append(",fps=$fps")
             val framed = "f$i"
             if (c.fill) {

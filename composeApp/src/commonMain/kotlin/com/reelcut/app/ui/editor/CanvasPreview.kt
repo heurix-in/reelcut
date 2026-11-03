@@ -29,6 +29,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import com.reelcut.app.data.Look
+import com.reelcut.app.data.LookMath
+import androidx.compose.runtime.remember
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
@@ -97,7 +102,11 @@ fun CanvasPreview(
                 .background(background),
             contentAlignment = Alignment.Center,
         ) {
-            val clip = if (trimMode) current?.copy(rotation = 0, flipH = false, fill = false) else current
+            val clip = if (trimMode) current?.copy(rotation = 0, flipH = false, fill = false, look = Look()) else current
+            // The colour filter covers the picture (and its blurred copy) but not the bars around it.
+            val lookFilter = remember(clip?.look) {
+                clip?.look?.takeIf { !it.isNeutral }?.let { ColorFilter.colorMatrix(ColorMatrix(LookMath.colorMatrix(LookMath.affine(it)))) }
+            }
 
             if (!trimMode && clip != null && canvas.blurBackground && !clip.fill) {
                 val bg by rememberFrame(thumbs, clip, sourceTimeUs, 240)
@@ -105,6 +114,7 @@ fun CanvasPreview(
                     Image(
                         it, null,
                         contentScale = ContentScale.Crop,
+                        colorFilter = lookFilter,
                         modifier = Modifier
                             .fillMaxSize()
                             .then(blurOrDim()),
@@ -123,11 +133,11 @@ fun CanvasPreview(
             } else Modifier.fillMaxSize()
 
             Box(contentModifier) {
-                player.Surface(Modifier.fillMaxSize())
+                player.Surface(Modifier.fillMaxSize(), lookFilter)
                 if (clip != null && clip.isPhoto && !trimMode) {
                     val photo by rememberFrame(thumbs, clip, 0L, 1280)
                     photo?.let {
-                        Image(it, null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
+                        Image(it, null, contentScale = ContentScale.FillBounds, colorFilter = lookFilter, modifier = Modifier.fillMaxSize())
                     }
                 }
             }

@@ -20,6 +20,7 @@ import androidx.media3.common.audio.SpeedProvider
 import androidx.media3.effect.FrameDropEffect
 import androidx.media3.effect.GaussianBlurWithFrameOverlaid
 import androidx.media3.effect.Presentation
+import androidx.media3.effect.RgbMatrix
 import androidx.media3.effect.ScaleAndRotateTransformation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
@@ -30,6 +31,7 @@ import com.reelcut.app.data.AudioMath
 import com.reelcut.app.data.Canvas
 import com.reelcut.app.data.CanvasMath
 import com.reelcut.app.data.Clip
+import com.reelcut.app.data.LookMath
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Quality
 import java.io.File
@@ -172,6 +174,9 @@ object CompositionBuilder {
                 .build()
         }
 
+        // Colour look: before framing, so it covers the picture and its blurred copy but not the bars.
+        if (!clip.look.isNeutral) video += LookMatrix(LookMath.rgbMatrix(LookMath.affine(clip.look)))
+
         if (canvas.blurBackground && !clip.fill) {
             // Stretch the frame to the canvas, blur it, and lay the sharp frame on top at its true shape.
             video += Presentation.createForWidthAndHeight(size.width, size.height, Presentation.LAYOUT_STRETCH_TO_FIT)
@@ -256,6 +261,11 @@ object CompositionBuilder {
             val visible = t in startUs until endUs
             return OverlaySettings.Builder().setAlphaScale(if (visible) 1f else 0f).build()
         }
+    }
+
+    /** A clip's colour look as one RGB matrix (see [LookMath.rgbMatrix]); the same for every frame. */
+    private class LookMatrix(private val matrix: FloatArray) : RgbMatrix {
+        override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = matrix
     }
 
     /** Scales every channel by [volume] (mono and stereo sources). */

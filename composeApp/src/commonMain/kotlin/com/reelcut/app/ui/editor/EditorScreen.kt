@@ -372,7 +372,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                                 Tool(Icons.Rounded.EmojiEmotions, "Sticker", enabled = p.clips.isNotEmpty()) { showStickers = true },
                                 Tool(Icons.Rounded.MusicNote, "Audio", enabled = p.clips.isNotEmpty()) { vm.openAudio() },
                                 Tool(Icons.Rounded.Image, "Logo", enabled = p.clips.isNotEmpty()) { pickLogo(MediaFilter.Photo) },
-                                Tool(Icons.Rounded.AutoAwesome, "Filter", soon = true) { soon("Filter") },
+                                Tool(Icons.Rounded.AutoAwesome, "Filter", enabled = p.clips.isNotEmpty()) { vm.openPanel(Mode.Filter) },
                                 Tool(Icons.Rounded.SwapHoriz, "Reorder", enabled = p.clips.size > 1) { vm.startReorder() },
                                 Tool(Icons.Rounded.AddPhotoAlternate, "Add") { addMedia(vm.insertIndexAtPlayhead(), MediaFilter.All) },
                                 Tool(Icons.Rounded.CropSquare, "Blank") {
@@ -426,6 +426,20 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
                         clip = clip,
                         onSpeed = vm::setSpeed,
                         onApplyAll = { vm.stageAll { c -> c.copy(speed = clip.speed) }; hint = "Speed applied to all clips" },
+                        onCancel = { vm.closePanel(apply = false) },
+                        onDone = { vm.closePanel(apply = true) },
+                    )
+                }
+
+                Mode.Filter -> vm.panelClip()?.let { clip ->
+                    FilterPanel(
+                        clip = clip,
+                        onPreset = vm::setPreset,
+                        onLook = vm::setLook,
+                        onApplyAll = {
+                            vm.stageAll { c -> c.copy(look = clip.look, filterId = clip.filterId) }
+                            hint = "Filter applied to all clips"
+                        },
                         onCancel = { vm.closePanel(apply = false) },
                         onDone = { vm.closePanel(apply = true) },
                     )
@@ -582,6 +596,7 @@ private fun clipTools(vm: EditorViewModel, p: Project, isPhoto: Boolean, hint: (
             }
         )
     }
+    add(Tool(Icons.Rounded.AutoAwesome, "Filter") { vm.openPanel(Mode.Filter) })
     add(Tool(Icons.Rounded.CropRotate, "Rotate") { vm.openPanel(Mode.Transform) })
     add(Tool(Icons.Rounded.ContentCopy, "Duplicate") { vm.duplicateTarget(); hint("Clip duplicated") })
     add(Tool(Icons.Rounded.SwapHoriz, "Reorder", enabled = p.clips.size > 1) { vm.startReorder() })

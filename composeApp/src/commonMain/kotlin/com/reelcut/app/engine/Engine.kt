@@ -2,6 +2,7 @@ package com.reelcut.app.engine
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import com.reelcut.app.data.AudioClip
 import com.reelcut.app.data.Clip
@@ -121,9 +122,12 @@ interface PreviewPlayer {
     fun sourcePositionUs(): Long
     fun exitSource(clips: List<Clip>, keepTimeUs: Long)
 
-    /** Draws the current video frame, stretched to [modifier]'s bounds (framing is done by the caller). */
+    /**
+     * Draws the current video frame, stretched to [modifier]'s bounds (framing is done by the caller).
+     * [colorFilter] is the clip's colour look, or null for none.
+     */
     @Composable
-    fun Surface(modifier: Modifier)
+    fun Surface(modifier: Modifier, colorFilter: ColorFilter? = null)
 
     fun release()
 }
