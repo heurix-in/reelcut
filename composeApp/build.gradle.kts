@@ -37,7 +37,12 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            // Test-only: lets tests control Dispatchers.Main and virtual time for the ViewModel.
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
         }
+        // Tests that need the JDK (the project file store) run in both the Android unit tests and the desktop tests.
+        matching { it.name == "androidUnitTest" || it.name == "desktopTest" }
+            .configureEach { kotlin.srcDir("src/jvmSharedTest/kotlin") }
 
         // JDK code that is identical on Android and Windows (files, ids, dates) is compiled into both.
         androidMain {

@@ -81,6 +81,8 @@ fun HomeScreen(services: Services, onOpen: (String) -> Unit) {
     val repo = services.repository
     val engine = services.engine
     val projects by repo.projects.collectAsState()
+    val unreadable by repo.unreadable.collectAsState()
+    var unreadableDismissed by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var importing by remember { mutableStateOf(false) }
@@ -142,6 +144,15 @@ fun HomeScreen(services: Services, onOpen: (String) -> Unit) {
                 Pill("Exports", selected = tab == 1, onClick = { tab = 1 })
             }
             Spacer(Modifier.height(16.dp))
+            if (tab == 0 && unreadable.isNotEmpty() && !unreadableDismissed) {
+                val n = unreadable.size
+                Pill(
+                    text = if (n == 1) "1 project couldn't be opened. Its file was left untouched. Tap to hide."
+                    else "$n projects couldn't be opened. Their files were left untouched. Tap to hide.",
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    onClick = { unreadableDismissed = true },
+                )
+            }
             if (tab == 0) {
                 ProjectList(services, projects, onOpen, onNew = newVideo)
             } else {

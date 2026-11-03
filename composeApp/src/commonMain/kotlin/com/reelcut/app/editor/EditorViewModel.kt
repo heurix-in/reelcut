@@ -55,6 +55,10 @@ class EditorViewModel(private val services: Services, private val projectId: Str
     private val _loadFailed = MutableStateFlow(false)
     val loadFailed: StateFlow<Boolean> = _loadFailed.asStateFlow()
 
+    /** True after an autosave could not be written; cleared by the next save that works. */
+    private val _saveFailed = MutableStateFlow(false)
+    val saveFailed: StateFlow<Boolean> = _saveFailed.asStateFlow()
+
     /** Clips whose source file can no longer be opened. */
     private val _missing = MutableStateFlow<Set<String>>(emptySet())
     val missing: StateFlow<Set<String>> = _missing.asStateFlow()
@@ -187,7 +191,19 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             delay(500)
-            _project.value?.let { repo.save(it) }
+            _project.value?.let { saveNow(it) }
+        }
+    }
+
+    /** Saves, and records a failure (disk full, folder gone) instead of crashing the app. */
+    private suspend fun saveNow(p: Project) {
+        try {
+            repo.save(p)
+            _saveFailed.value = false
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _saveFailed.value = true
         }
     }
 
@@ -704,9 +720,9 @@ class EditorViewModel(private val services: Services, private val projectId: Str
         tickJob?.cancel()
         exportJob?.cancel()
         recorder?.cancel()
-        // Save immediately; the scope is going away.
+        // Save immediately; the scope is going away. Nothing is left to show an error on.
         _project.value?.let { p ->
-            services.appScope.launch { repo.save(p) }
+            services.appScope.launch { runCatching { repo.save(p) } }
         }
         preview.release()
     }

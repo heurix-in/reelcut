@@ -105,6 +105,7 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
 
     val project by vm.project.collectAsState()
     val loadFailed by vm.loadFailed.collectAsState()
+    val saveFailed by vm.saveFailed.collectAsState()
     val missing by vm.missing.collectAsState()
     val playheadUs by vm.playheadUs.collectAsState()
     val isPlaying by vm.isPlaying.collectAsState()
@@ -131,6 +132,9 @@ fun EditorScreen(services: Services, projectId: String, onBack: () -> Unit) {
             delay(1600)
             hint = null
         }
+    }
+    LaunchedEffect(saveFailed) {
+        if (saveFailed) hint = "Couldn't save your changes. Is the storage full?"
     }
 
     val pick = rememberMediaPicker { refs ->
