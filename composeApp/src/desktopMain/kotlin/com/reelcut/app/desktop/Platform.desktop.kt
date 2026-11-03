@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
+import com.reelcut.app.data.TextFont
 import com.reelcut.app.desktop.Ffmpeg
 import com.reelcut.app.desktop.NativeFileDialog
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,15 @@ actual val UrbanistFamily: FontFamily = FontFamily(
     Font("font/urbanist_medium.ttf", FontWeight.Medium),
     Font("font/urbanist_semibold.ttf", FontWeight.SemiBold),
     Font("font/urbanist_bold.ttf", FontWeight.Bold),
+)
+
+actual val BundledTextFonts: Map<TextFont, FontFamily> = mapOf(
+    TextFont.POSTER to FontFamily(Font("font/bebas_neue.ttf", FontWeight.Normal)),
+    TextFont.IMPACT to FontFamily(Font("font/anton.ttf", FontWeight.Normal)),
+    TextFont.ELEGANT to FontFamily(Font("font/playfair_display_bold.ttf", FontWeight.Normal)),
+    TextFont.SCRIPT to FontFamily(Font("font/pacifico.ttf", FontWeight.Normal)),
+    TextFont.HAND to FontFamily(Font("font/caveat_bold.ttf", FontWeight.Normal)),
+    TextFont.ROUND to FontFamily(Font("font/fredoka_semibold.ttf", FontWeight.Normal)),
 )
 
 actual val isPhone: Boolean = false

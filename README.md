@@ -29,4 +29,7 @@ Every push to `main` builds on GitHub Actions and publishes one release with:
 | `src/jvmShared` | JDK code compiled into both (project files, ids, dates) |
 | `src/commonTest` | Unit tests for timeline and canvas maths |
 
+Fonts (all SIL Open Font License, downloaded by `scripts/get-fonts.sh` and not stored in git): Urbanist (interface),
+Bebas Neue, Anton, Playfair Display, Pacifico, Caveat and Fredoka (text styles).
+
 Build locally: `./scripts/get-fonts.sh`, then `./gradlew :composeApp:assembleDebug` (Android) or `./gradlew :composeApp:run` (desktop).

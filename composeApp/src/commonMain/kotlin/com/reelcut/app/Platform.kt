@@ -2,6 +2,7 @@ package com.reelcut.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontFamily
+import com.reelcut.app.data.TextFont
 
 /** Small things each platform provides. JDK-based ones live in src/jvmShared, used by both. */
 
@@ -14,6 +15,9 @@ expect fun formatDate(millis: Long, pattern: String): String
 
 /** The Urbanist font in the weights the app uses. */
 expect val UrbanistFamily: FontFamily
+
+/** The bundled fonts for the text-style choices that are not Urbanist or a system family (same on every platform). */
+expect val BundledTextFonts: Map<TextFont, FontFamily>
 
 enum class MediaFilter { All, Video, Photo }
 

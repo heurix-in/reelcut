@@ -28,6 +28,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.sp
 import com.reelcut.app.data.Overlay
 import com.reelcut.app.data.TextAlignment
 import com.reelcut.app.data.TextFont
@@ -108,10 +111,36 @@ fun TextPanel(
                     style = Type.Label, color = Palette.Muted)
             }
             TextTab.Font -> {
+                // Each choice is written in its own font.
                 ChipRow {
                     TextFont.entries.forEach { f ->
-                        Pill(f.label, selected = overlay.font == f, selectedColor = Palette.Accent, onClick = { onChange { it.copy(font = f) } })
+                        val (family, weight) = OverlayDraw.fontFor(f)
+                        Pill(
+                            f.label,
+                            selected = overlay.font == f,
+                            selectedColor = Palette.Accent,
+                            onClick = { onChange { it.copy(font = f) } },
+                            style = Type.Label.copy(fontFamily = family, fontWeight = weight, fontSize = 15.sp, lineHeight = 20.sp),
+                        )
                     }
+                }
+                ChipRow {
+                    Pill(
+                        "Italic",
+                        selected = overlay.italic,
+                        onClick = { onChange { it.copy(italic = !it.italic) } },
+                        style = Type.Label.copy(fontStyle = FontStyle.Italic),
+                    )
+                    Pill(
+                        "Underline",
+                        selected = overlay.underline,
+                        onClick = { onChange { it.copy(underline = !it.underline) } },
+                        style = Type.Label.copy(textDecoration = TextDecoration.Underline),
+                    )
+                    Pill("ABC", selected = overlay.uppercase, onClick = { onChange { it.copy(uppercase = !it.uppercase) } })
+                }
+                SliderRow("Letter spacing", "${(overlay.letterSpacing * 100).roundToInt()}") {
+                    AccentSlider(overlay.letterSpacing, { v -> onChange { it.copy(letterSpacing = v) } }, -0.05f..0.4f)
                 }
                 SliderRow("Size", "${(overlay.scale * 100).roundToInt()}%") {
                     AccentSlider(overlay.scale, { v -> onChange { it.copy(scale = v) } }, Overlay.MIN_SCALE..4f)

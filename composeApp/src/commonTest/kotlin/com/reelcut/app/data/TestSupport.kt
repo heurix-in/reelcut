@@ -52,7 +52,8 @@ fun fullProject(id: String = "p1", updatedAt: Long = 2_000L) = Project(
     overlays = listOf(
         Overlay(
             id = "t1", kind = OverlayKind.TEXT, startUs = 0, endUs = 2_000_000, text = "Hello",
-            font = TextFont.SERIF, colorArgb = 0xFFFF0000, outlineArgb = 0xFF000000, shadow = true,
+            font = TextFont.SCRIPT, italic = true, underline = true, uppercase = true, letterSpacing = 0.12f,
+            colorArgb = 0xFFFF0000, outlineArgb = 0xFF000000, shadow = true,
             labelArgb = 0x80000000, align = TextAlignment.LEFT, x = 0.2f, y = 0.8f, scale = 1.5f, rotation = 15f,
         ),
         Overlay(

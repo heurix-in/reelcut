@@ -19,14 +19,18 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.reelcut.app.BundledTextFonts
 import com.reelcut.app.UrbanistFamily
 import com.reelcut.app.data.Overlay
 import com.reelcut.app.data.OverlayKind
@@ -52,19 +56,24 @@ object OverlayDraw {
 
     fun fontPx(o: Overlay, w: Float, h: Float): Float = min(w, h) * 0.075f * o.scale
 
-    private fun family(font: TextFont): Pair<FontFamily, FontWeight> = when (font) {
+    /** The font family and weight for a text style. The bundled ones are cut to one weight, so they ask for Normal. */
+    fun fontFor(font: TextFont): Pair<FontFamily, FontWeight> = when (font) {
         TextFont.SANS -> UrbanistFamily to FontWeight.Medium
         TextFont.BOLD -> UrbanistFamily to FontWeight.Bold
         TextFont.SERIF -> FontFamily.Serif to FontWeight.Bold
         TextFont.MONO -> FontFamily.Monospace to FontWeight.Bold
+        else -> (BundledTextFonts[font] ?: UrbanistFamily) to FontWeight.Normal
     }
 
     fun layoutText(o: Overlay, w: Float, h: Float, measurer: TextMeasurer): TextLayoutResult {
         val px = fontPx(o, w, h)
-        val (fam, weight) = family(o.font)
+        val (fam, weight) = fontFor(o.font)
         val style = TextStyle(
             fontFamily = fam,
             fontWeight = weight,
+            fontStyle = if (o.italic) FontStyle.Italic else FontStyle.Normal,
+            textDecoration = if (o.underline) TextDecoration.Underline else TextDecoration.None,
+            letterSpacing = o.letterSpacing.em,
             fontSize = px.sp, // density 1: 1 sp == 1 px
             lineHeight = (px * 1.15f).sp,
             textAlign = when (o.align) {
@@ -74,7 +83,7 @@ object OverlayDraw {
             },
         )
         return measurer.measure(
-            text = AnnotatedString(o.text.ifEmpty { " " }),
+            text = AnnotatedString((if (o.uppercase) o.text.uppercase() else o.text).ifEmpty { " " }),
             style = style,
             constraints = Constraints(maxWidth = max(1, (w * 0.92f).roundToInt())),
             density = PixelDensity,

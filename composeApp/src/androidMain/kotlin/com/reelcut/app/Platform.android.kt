@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
+import com.reelcut.app.data.TextFont
 
 actual val UrbanistFamily: FontFamily = FontFamily(
     Font(R.font.urbanist_light, FontWeight.Light),
@@ -23,6 +24,15 @@ actual val UrbanistFamily: FontFamily = FontFamily(
     Font(R.font.urbanist_medium, FontWeight.Medium),
     Font(R.font.urbanist_semibold, FontWeight.SemiBold),
     Font(R.font.urbanist_bold, FontWeight.Bold),
+)
+
+actual val BundledTextFonts: Map<TextFont, FontFamily> = mapOf(
+    TextFont.POSTER to FontFamily(Font(R.font.bebas_neue, FontWeight.Normal)),
+    TextFont.IMPACT to FontFamily(Font(R.font.anton, FontWeight.Normal)),
+    TextFont.ELEGANT to FontFamily(Font(R.font.playfair_display_bold, FontWeight.Normal)),
+    TextFont.SCRIPT to FontFamily(Font(R.font.pacifico, FontWeight.Normal)),
+    TextFont.HAND to FontFamily(Font(R.font.caveat_bold, FontWeight.Normal)),
+    TextFont.ROUND to FontFamily(Font(R.font.fredoka_semibold, FontWeight.Normal)),
 )
 
 actual val isPhone: Boolean = true

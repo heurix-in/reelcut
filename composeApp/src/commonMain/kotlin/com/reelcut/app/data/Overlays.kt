@@ -5,8 +5,12 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class OverlayKind { TEXT, LOGO }
 
+/** New fonts are only ever added at the end: projects store the name. */
 @Serializable
-enum class TextFont(val label: String) { SANS("Clean"), BOLD("Bold"), SERIF("Serif"), MONO("Mono") }
+enum class TextFont(val label: String) {
+    SANS("Clean"), BOLD("Bold"), SERIF("Serif"), MONO("Mono"),
+    POSTER("Poster"), IMPACT("Impact"), ELEGANT("Elegant"), SCRIPT("Script"), HAND("Hand"), ROUND("Round"),
+}
 
 @Serializable
 enum class TextAlignment { LEFT, CENTER, RIGHT }
@@ -43,6 +47,11 @@ data class Overlay(
     /** 0 = no box behind the text. */
     val labelArgb: Long = 0,
     val align: TextAlignment = TextAlignment.CENTER,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
+    val uppercase: Boolean = false,
+    /** Extra space between letters as a fraction of the font size (0 = normal). */
+    val letterSpacing: Float = 0f,
 
     // Logo
     val imageUri: String = "",

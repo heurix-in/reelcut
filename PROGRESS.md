@@ -67,6 +67,15 @@
 - Checked by temporarily breaking behaviour on purpose (undo cap, cancel, autosave delay, export guard, deletion
   safety checks, ...): each one was caught by a test
 
+## Done – Glass look, gold accent, text fonts (3 Nov 2026)
+- New look: warm near-black with one gold accent instead of yellow; quiet glass surfaces (dark scrim + light
+  gradient + hairline edge, `Modifier.glass()`) for buttons, chips, the toolbar/timeline sheet and the panels; a soft
+  gradient background with two faint gold glows (`appBackground()`). Android colours, launcher icon and the Windows
+  icon recoloured. Not seen on a screen yet: judge it on the 0.2.12 build and tell me what to change
+- Text: 6 more fonts (Poster, Impact, Elegant, Script, Hand, Round), each choice shown in its own font; Italic,
+  Underline and ABC (all caps) toggles; letter spacing. Old projects open unchanged
+- Build log prints every test and result, so CI shows which tests ran
+
 ## Verified vs not (3 Nov 2026 work)
 - Compiled and tested on the JVM (desktop target) with a throwaway harness: all shared code, the desktop engine and
   all 123 tests pass. The harness stubs the AndroidX lifecycle classes, so the `EditorViewModel` tests have run
