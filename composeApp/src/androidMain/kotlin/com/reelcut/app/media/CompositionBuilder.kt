@@ -26,12 +26,14 @@ import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
+import com.reelcut.app.data.AnimMath
 import com.reelcut.app.data.AudioClip
 import com.reelcut.app.data.AudioMath
 import com.reelcut.app.data.Canvas
 import com.reelcut.app.data.CanvasMath
 import com.reelcut.app.data.Clip
 import com.reelcut.app.data.LookMath
+import com.reelcut.app.data.OverlayAnim
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Quality
 import java.io.File
@@ -68,7 +70,16 @@ object CompositionBuilder {
     fun bitrate(size: CanvasMath.Size, settings: ExportSettings): Int = CanvasMath.bitrate(size, settings)
 
     /** A text/logo layer as an Android bitmap, shown between two timeline times. */
-    class Layer(val bitmap: Bitmap, val startUs: Long, val endUs: Long)
+    class Layer(
+        val bitmap: Bitmap,
+        val startUs: Long,
+        val endUs: Long,
+        val animIn: OverlayAnim = OverlayAnim.NONE,
+        val animOut: OverlayAnim = OverlayAnim.NONE,
+        /** The point (fractions of the frame) a pop grows and shrinks about. */
+        val centreX: Float = 0.5f,
+        val centreY: Float = 0.5f,
+    )
 
     fun exportComposition(
         clips: List<Clip>,
@@ -203,7 +214,7 @@ object CompositionBuilder {
         }
         val clipEndUs = clipStartUs + clip.durationUs
         layers.filter { it.endUs > clipStartUs && it.startUs < clipEndUs }.forEach {
-            overlays += TimedOverlay(it.bitmap, it.startUs, it.endUs, clipStartUs)
+            overlays += TimedOverlay(it, clipStartUs, size.width, size.height)
         }
         if (overlays.isNotEmpty()) video += OverlayEffect(ImmutableList.copyOf(overlays))
 
@@ -239,10 +250,10 @@ object CompositionBuilder {
      * first frame it sees is the clip's first frame, so time = clip start + elapsed.
      */
     private class TimedOverlay(
-        private val bitmap: Bitmap,
-        private val startUs: Long,
-        private val endUs: Long,
+        private val layer: Layer,
         private val clipStartUs: Long,
+        private val frameWidth: Int,
+        private val frameHeight: Int,
     ) : BitmapOverlay() {
         private var firstUs = Long.MIN_VALUE
 
@@ -253,13 +264,29 @@ object CompositionBuilder {
 
         override fun getBitmap(presentationTimeUs: Long): Bitmap {
             timelineUs(presentationTimeUs)
-            return bitmap
+            return layer.bitmap
         }
 
         override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
             val t = timelineUs(presentationTimeUs)
-            val visible = t in startUs until endUs
-            return OverlaySettings.Builder().setAlphaScale(if (visible) 1f else 0f).build()
+            val visible = t in layer.startUs until layer.endUs
+            if (!visible) return OverlaySettings.Builder().setAlphaScale(0f).build()
+            if (layer.animIn == OverlayAnim.NONE && layer.animOut == OverlayAnim.NONE) {
+                return OverlaySettings.Builder().setAlphaScale(1f).build()
+            }
+            // Where the animation has the overlay at this moment (see AnimMath). The layer is a whole frame,
+            // so it grows and shrinks about the overlay's own centre, given in normalised device
+            // coordinates (x right, y up), and slides by moving the background anchor.
+            val s = AnimMath.state(layer.animIn, layer.animOut, layer.startUs, layer.endUs, t)
+            val short = minOf(frameWidth, frameHeight).toFloat()
+            val cx = layer.centreX * 2f - 1f
+            val cy = 1f - layer.centreY * 2f
+            return OverlaySettings.Builder()
+                .setAlphaScale(s.alpha)
+                .setScale(s.scale, s.scale)
+                .setOverlayFrameAnchor(cx, cy)
+                .setBackgroundFrameAnchor(cx + 2f * s.dx * short / frameWidth, cy - 2f * s.dy * short / frameHeight)
+                .build()
         }
     }
 

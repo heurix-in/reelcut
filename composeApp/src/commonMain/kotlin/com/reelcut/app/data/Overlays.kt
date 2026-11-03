@@ -52,6 +52,9 @@ data class Overlay(
     val uppercase: Boolean = false,
     /** Extra space between letters as a fraction of the font size (0 = normal). */
     val letterSpacing: Float = 0f,
+    /** How it comes in and goes out (see [AnimMath]); applies to text and logos. */
+    val animIn: OverlayAnim = OverlayAnim.NONE,
+    val animOut: OverlayAnim = OverlayAnim.NONE,
 
     // Logo
     val imageUri: String = "",

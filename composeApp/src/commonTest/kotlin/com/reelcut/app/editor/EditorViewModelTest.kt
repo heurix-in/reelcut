@@ -624,6 +624,18 @@ class EditorViewModelTest {
     }
 
     @Test
+    fun aTextAnimationIsPartOfTheSameUndoStepAsTheRestOfTheTextEdit() = editorTest { vm ->
+        vm.addText()
+        vm.stageSelectedOverlay { it.copy(text = "Hi", animIn = com.reelcut.app.data.OverlayAnim.POP, animOut = com.reelcut.app.data.OverlayAnim.FADE) }
+        vm.closePanel(apply = true)
+        val o = vm.p().overlays.single()
+        assertEquals(com.reelcut.app.data.OverlayAnim.POP, o.animIn)
+        assertEquals(com.reelcut.app.data.OverlayAnim.FADE, o.animOut)
+        vm.undo()
+        assertTrue(vm.p().overlays.isEmpty())
+    }
+
+    @Test
     fun textCannotBeAddedToAnEmptyProject() = editorTest(initial = project(emptyList())) { vm ->
         vm.addText()
         assertEquals(Mode.Edit, vm.mode.value)

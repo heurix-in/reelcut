@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import com.reelcut.app.data.AudioClip
 import com.reelcut.app.data.Clip
+import com.reelcut.app.data.OverlayAnim
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Project
 import com.reelcut.app.data.ProjectRepository
@@ -82,8 +83,22 @@ interface VoiceRecorder {
     fun cancel()
 }
 
-/** A full-frame transparent image shown between [startUs] and [endUs] of the timeline. */
-class OverlayLayer(val image: ImageBitmap, val startUs: Long, val endUs: Long)
+/**
+ * A full-frame transparent image shown between [startUs] and [endUs] of the timeline. If it is animated
+ * the engine moves it as [com.reelcut.app.data.AnimMath] says; [centreX] and [centreY] (fractions of the
+ * frame) are the point it grows and shrinks about.
+ */
+class OverlayLayer(
+    val image: ImageBitmap,
+    val startUs: Long,
+    val endUs: Long,
+    val animIn: OverlayAnim = OverlayAnim.NONE,
+    val animOut: OverlayAnim = OverlayAnim.NONE,
+    val centreX: Float = 0.5f,
+    val centreY: Float = 0.5f,
+) {
+    val isAnimated: Boolean get() = animIn != OverlayAnim.NONE || animOut != OverlayAnim.NONE
+}
 
 class ExportFailed(message: String, cause: Throwable? = null) : Exception(message, cause)
 

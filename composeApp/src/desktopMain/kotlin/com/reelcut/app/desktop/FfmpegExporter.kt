@@ -1,9 +1,11 @@
 package com.reelcut.app.desktop
 
+import com.reelcut.app.data.AnimMath
 import com.reelcut.app.data.CanvasMath
 import com.reelcut.app.data.ExportSettings
 import com.reelcut.app.data.Look
 import com.reelcut.app.data.LookMath
+import com.reelcut.app.data.OverlayAnim
 import com.reelcut.app.data.Project
 import com.reelcut.app.engine.ExportFailed
 import androidx.compose.ui.graphics.toAwtImage
@@ -19,6 +21,19 @@ import java.util.Date
 import java.util.Locale
 import javax.imageio.ImageIO
 import kotlin.coroutines.coroutineContext
+
+/** A text or logo picture on disk with its time range and, if animated, how it moves (see [AnimMath]). */
+class LayerFile(
+    val file: File,
+    val startUs: Long,
+    val endUs: Long,
+    val animIn: OverlayAnim = OverlayAnim.NONE,
+    val animOut: OverlayAnim = OverlayAnim.NONE,
+    val centreX: Float = 0.5f,
+    val centreY: Float = 0.5f,
+) {
+    val isAnimated: Boolean get() = animIn != OverlayAnim.NONE || animOut != OverlayAnim.NONE
+}
 
 /**
  * Windows export: builds one ffmpeg command from the project (same framing rules as the
@@ -53,7 +68,7 @@ class FfmpegExporter {
             val layerFiles = layers.mapIndexed { i, layer ->
                 val f = File(layerDir, "layer$i.png")
                 ImageIO.write(layer.image.toAwtImage(), "png", f)
-                Triple(f, layer.startUs, layer.endUs)
+                LayerFile(f, layer.startUs, layer.endUs, layer.animIn, layer.animOut, layer.centreX, layer.centreY)
             }
             // One colour lookup file per distinct look. ffmpeg runs in this folder so the filter can use a plain file name.
             val lookFiles = clips.map { it.look }.filter { !it.isNeutral }.distinct()
@@ -113,7 +128,7 @@ class FfmpegExporter {
         project: Project,
         settings: ExportSettings,
         out: File,
-        layers: List<Triple<File, Long, Long>> = emptyList(),
+        layers: List<LayerFile> = emptyList(),
         /** Colour lookup file name for each clip look (files sit in ffmpeg's working folder). */
         lookFiles: Map<Look, String> = emptyMap(),
     ): List<String> {
@@ -189,11 +204,15 @@ class FfmpegExporter {
 
         // Text and logo layers: one transparent picture each, shown in its time range.
         var current = "cat"
-        layers.forEachIndexed { k, (file, startUs, endUs) ->
+        layers.forEachIndexed { k, layer ->
             val idx = input++
-            args += listOf("-i", file.absolutePath)
             val next = "ov$k"
-            graph.append(";[$current][$idx:v]overlay=0:0:enable='between(t,${num(startUs / 1e6)},${num(endUs / 1e6)})'[$next]")
+            if (layer.isAnimated) {
+                graph.append(';').append(animatedOverlay(layer, idx, current, next, w, h, fps, args))
+            } else {
+                args += listOf("-i", layer.file.absolutePath)
+                graph.append(";[$current][$idx:v]overlay=0:0:enable='between(t,${num(layer.startUs / 1e6)},${num(layer.endUs / 1e6)})'[$next]")
+            }
             current = next
         }
         graph.append(";[$current]format=yuv420p[outv]")
@@ -234,6 +253,45 @@ class FfmpegExporter {
         }
         args += listOf("-r", "$fps", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out.absolutePath)
         return args
+    }
+
+    /**
+     * An animated text or logo layer. The picture is played as a looping stream shifted to its start time;
+     * the fade is ffmpeg's alpha fade, and the slide and pop are expressions of the time `t` that follow
+     * [AnimMath] exactly: position = centre * (1 - scale) + shift, so a pop grows about the overlay's centre.
+     */
+    private fun animatedOverlay(l: LayerFile, idx: Int, current: String, next: String, w: Int, h: Int, fps: Int, args: MutableList<String>): String {
+        val s = l.startUs / 1e6
+        val e = l.endUs / 1e6
+        val d = AnimMath.durationUs(l.startUs, l.endUs) / 1e6
+        args += listOf("-loop", "1", "-framerate", "$fps", "-t", num(e - s), "-i", l.file.absolutePath)
+        val p = "clip((t-${num(s)})/${num(d)},0,1)" // 0 to 1 while coming in
+        val r = "clip((t-${num(e - d)})/${num(d)},0,1)" // 0 to 1 while going out
+        val short = minOf(w, h)
+        val pop = AnimMath.POP_FROM
+        val sIn = if (l.animIn == OverlayAnim.POP) "(${num(pop.toDouble())}+${num(1.0 - pop)}*(1-pow(1-$p,3)))" else "1"
+        val sOut = if (l.animOut == OverlayAnim.POP) "(1-${num(1.0 - pop)}*pow($r,3))" else "1"
+        val scaleExpr = "($sIn*$sOut)"
+        fun shift(vIn: Float, vOut: Float): String {
+            val parts = mutableListOf<String>()
+            if (l.animIn != OverlayAnim.NONE && vIn != 0f) parts += "(${num(-vIn * AnimMath.SLIDE_DISTANCE.toDouble() * short)}*pow(1-$p,3))"
+            if (l.animOut != OverlayAnim.NONE && vOut != 0f) parts += "(${num(vOut * AnimMath.SLIDE_DISTANCE.toDouble() * short)}*pow($r,3))"
+            return if (parts.isEmpty()) "0" else parts.joinToString("+")
+        }
+        val (vxIn, vyIn) = AnimMath.direction(l.animIn)
+        val (vxOut, vyOut) = AnimMath.direction(l.animOut)
+        val x = "${num(l.centreX * w.toDouble())}*(1-$scaleExpr)+${shift(vxIn, vxOut)}"
+        val y = "${num(l.centreY * h.toDouble())}*(1-$scaleExpr)+${shift(vyIn, vyOut)}"
+
+        val chain = StringBuilder("[$idx:v]format=rgba,setpts=PTS+${num(s)}/TB")
+        if (l.animIn != OverlayAnim.NONE) chain.append(",fade=t=in:st=${num(s)}:d=${num(d)}:alpha=1")
+        if (l.animOut != OverlayAnim.NONE) chain.append(",fade=t=out:st=${num(e - d)}:d=${num(d)}:alpha=1")
+        if (l.animIn == OverlayAnim.POP || l.animOut == OverlayAnim.POP) {
+            chain.append(",scale=w='iw*$scaleExpr':h='ih*$scaleExpr':eval=frame")
+        }
+        chain.append("[anim$idx];")
+        chain.append("[$current][anim$idx]overlay=x='$x':y='$y':eof_action=pass:enable='between(t,${num(s)},${num(e)})'[$next]")
+        return chain.toString()
     }
 
     /** atempo takes 0.5–2.0 per step, so 0.25× and 4× are chained. */

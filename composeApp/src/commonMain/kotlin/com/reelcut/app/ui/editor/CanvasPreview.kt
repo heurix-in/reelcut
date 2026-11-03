@@ -247,7 +247,7 @@ private fun OverlayLayer(state: OverlayState, w: Float, h: Float) {
     ) {
         state.overlays.forEach { o ->
             if (o.visibleAt(state.timeUs) || o.id == state.selectedId) {
-                drawOverlay(o, w, h, state.measurer, state.logos[o.imageUri])
+                drawOverlay(o, w, h, state.measurer, state.logos[o.imageUri], state.timeUs)
             }
         }
         // Selection frame and the corner handle (drag it to resize and rotate).

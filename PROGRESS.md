@@ -87,6 +87,17 @@
   108 colour/look combinations, worst difference 5/255. NOT checked: the Android export and the Android and
   Windows previews on a screen
 
+## Done – Text and logo animations (3 Nov 2026)
+- Text and logos can animate in and out: None, Fade, Slide up/down/left/right, Pop (grows from 60% about its own
+  centre). New "Animate" tab on the Text panel and a section on the Logo panel. Each lasts up to half a second
+  (never more than half the overlay's time). Old projects open with no animation
+- One definition of the motion (`data/OverlayAnim.kt`, `AnimMath.state`): the preview draws it, Android moves the
+  overlay with Media3 `OverlaySettings` per frame (alpha, scale, anchors), Windows uses ffmpeg's alpha fade plus
+  expressions of the time for position and size
+- Checked: the maths (9 tests) and the real Windows export graph through ffmpeg: 8 in/out combinations, 58 frames,
+  worst difference 2 px in position, 1 px in size, 0.004 in opacity. NOT checked: the Android export (the anchor
+  and scale behaviour of `OverlaySettings` is from the Media3 docs, not seen running) and the preview on a screen
+
 ## Verified vs not (3 Nov 2026 work)
 - Compiled and tested on the JVM (desktop target) with a throwaway harness: all shared code, the desktop engine and
   all 123 tests pass. The harness stubs the AndroidX lifecycle classes, so the `EditorViewModel` tests have run
@@ -103,8 +114,8 @@
 - Windows preview: sped-up clips play silent (sound follows speed on export); photos ignore EXIF rotation
 - Windows editor still uses the phone layout (small video, full-width timeline); a proper desktop layout is planned
 - Blank frame colour is black only for now
-- Next: text animations (fade, slide, pop), then filters and transitions. These need Android export code that can only
-  be built by CI, so they go in a separate step with a CI round trip
+- Next: clip transitions, a waveform on the audio bars, and playing audio above 100% in the preview. Each needs
+  Android code that only CI can build
 - Cloud sync would need the INTERNET permission, which the spec rules out ("fully offline, no network permission");
   decide that before starting it
 - Audio: boosts above 100% are heard on export only; no waveform on the bars yet; an extracted sound stays where it

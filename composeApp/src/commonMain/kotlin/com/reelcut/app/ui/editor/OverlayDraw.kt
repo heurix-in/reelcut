@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -32,7 +33,10 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.reelcut.app.BundledTextFonts
 import com.reelcut.app.UrbanistFamily
+import com.reelcut.app.data.AnimMath
+import com.reelcut.app.data.AnimState
 import com.reelcut.app.data.Overlay
+import com.reelcut.app.data.OverlayAnim
 import com.reelcut.app.data.OverlayKind
 import com.reelcut.app.data.TextAlignment
 import com.reelcut.app.data.TextFont
@@ -133,12 +137,21 @@ object OverlayDraw {
 
     fun angleDegrees(v: Offset): Float = (atan2(v.y, v.x) * 180.0 / kotlin.math.PI).toFloat()
 
-    /** Draws one overlay onto a canvas of [w] x [h] pixels. */
-    fun DrawScope.drawOverlay(o: Overlay, w: Float, h: Float, measurer: TextMeasurer, logo: ImageBitmap?) {
-        val c = centre(o, w, h)
+    /**
+     * Draws one overlay onto a canvas of [w] x [h] pixels. With [timeUs] (timeline time) an animated overlay is
+     * drawn where its animation has it at that moment; without it, at rest (as the export layers are drawn).
+     */
+    fun DrawScope.drawOverlay(o: Overlay, w: Float, h: Float, measurer: TextMeasurer, logo: ImageBitmap?, timeUs: Long? = null) {
+        val animated = timeUs != null && o.visibleAt(timeUs) && (o.animIn != OverlayAnim.NONE || o.animOut != OverlayAnim.NONE)
+        val s = if (animated) AnimMath.state(o, timeUs!!) else AnimState.Rest
+        if (s.alpha <= 0f) return
+        val shown = if (s.alpha < 1f) o.copy(opacity = o.opacity * s.alpha) else o
+        val c = centre(o, w, h) + Offset(s.dx * min(w, h), s.dy * min(w, h))
         translate(c.x, c.y) {
             rotate(o.rotation, pivot = Offset.Zero) {
-                if (o.kind == OverlayKind.TEXT) drawTextBox(o, w, h, measurer) else drawLogo(o, w, h, logo)
+                scale(s.scale, pivot = Offset.Zero) {
+                    if (o.kind == OverlayKind.TEXT) drawTextBox(shown, w, h, measurer) else drawLogo(shown, w, h, logo)
+                }
             }
         }
     }
@@ -211,6 +224,9 @@ class OverlayRenderer(private val measurer: TextMeasurer, private val engine: Me
         overlays.mapNotNull { o ->
             if (o.kind == OverlayKind.TEXT && o.text.isBlank()) return@mapNotNull null
             val logo = if (o.kind == OverlayKind.LOGO) engine.loadImage(o.imageUri, 2048) ?: return@mapNotNull null else null
-            OverlayLayer(OverlayDraw.renderLayer(o, width, height, measurer, logo), o.startUs, o.endUs)
+            OverlayLayer(
+                OverlayDraw.renderLayer(o, width, height, measurer, logo), o.startUs, o.endUs,
+                o.animIn, o.animOut, o.x, o.y,
+            )
         }
 }

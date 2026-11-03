@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 import com.reelcut.app.data.Overlay
+import com.reelcut.app.data.OverlayAnim
 import com.reelcut.app.data.TextAlignment
 import com.reelcut.app.data.TextFont
 import com.reelcut.app.ui.components.ColorPicker
@@ -44,7 +45,7 @@ import com.reelcut.app.ui.theme.Type
 import kotlin.math.roundToInt
 
 private enum class TextTab(val label: String) {
-    Edit("Text"), Font("Font"), Colour("Colour"), Outline("Outline"), Label("Label"), Shadow("Shadow"), Time("Time")
+    Edit("Text"), Font("Font"), Colour("Colour"), Outline("Outline"), Label("Label"), Shadow("Shadow"), Animate("Animate"), Time("Time")
 }
 
 /** Text tool: words, font and size, colours, outline, label box, shadow and timing. */
@@ -163,6 +164,7 @@ fun TextPanel(
                 Pill("No shadow", selected = !overlay.shadow, selectedColor = Palette.Accent, onClick = { onChange { it.copy(shadow = false) } })
                 Pill("Soft shadow", selected = overlay.shadow, selectedColor = Palette.Accent, onClick = { onChange { it.copy(shadow = true) } })
             }
+            TextTab.Animate -> AnimationControls(overlay, onChange)
             TextTab.Time -> TimingControls(overlay, playheadUs, totalUs, onChange, onSeek)
         }
         PanelActions(onCancel, onDone)
@@ -205,9 +207,32 @@ fun LogoPanel(
                 Pill(label, onClick = { onChange { it.copy(x = pos.first, y = pos.second, rotation = 0f) } })
             }
         }
+        Text("Animation", style = Type.Label, color = Palette.Muted)
+        AnimationControls(overlay, onChange)
         TimingControls(overlay, playheadUs, totalUs, onChange, onSeek)
         PanelActions(onCancel, onDone)
     }
+}
+
+/** How a text or logo comes in and goes out. */
+@Composable
+private fun AnimationControls(overlay: Overlay, onChange: ((Overlay) -> Overlay) -> Unit) {
+    Text("Coming in", style = Type.Label, color = Palette.Muted)
+    ChipRow {
+        OverlayAnim.entries.forEach { a ->
+            Pill(a.label, selected = overlay.animIn == a, selectedColor = Palette.Accent, onClick = { onChange { it.copy(animIn = a) } })
+        }
+    }
+    Text("Going out", style = Type.Label, color = Palette.Muted)
+    ChipRow {
+        OverlayAnim.entries.forEach { a ->
+            Pill(a.label, selected = overlay.animOut == a, selectedColor = Palette.Accent, onClick = { onChange { it.copy(animOut = a) } })
+        }
+    }
+    Text(
+        "Each lasts up to half a second. A slide moves in the direction named. Move the playhead over the start or end to see it.",
+        style = Type.Label, color = Palette.Muted,
+    )
 }
 
 @Composable

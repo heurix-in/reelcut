@@ -62,7 +62,9 @@ class AndroidMediaEngine(private val context: Context) : MediaEngine {
         layers: List<OverlayLayer>,
         onProgress: (Int) -> Unit,
     ): String {
-        val androidLayers = layers.map { CompositionBuilder.Layer(it.image.asAndroidBitmap(), it.startUs, it.endUs) }
+        val androidLayers = layers.map {
+            CompositionBuilder.Layer(it.image.asAndroidBitmap(), it.startUs, it.endUs, it.animIn, it.animOut, it.centreX, it.centreY)
+        }
         return exporter.export(
             project.clips, project.canvas, project.muteOriginal, settings, androidLayers, project.audio, onProgress,
         ).toString()
