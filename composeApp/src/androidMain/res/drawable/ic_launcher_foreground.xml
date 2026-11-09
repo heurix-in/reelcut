@@ -3,16 +3,12 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- gold disc -->
+    <!-- blue disc -->
     <path
-        android:fillColor="#D4AF5A"
+        android:fillColor="#2B7DFF"
         android:pathData="M54,30a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
     <!-- play triangle -->
     <path
-        android:fillColor="#1B1915"
+        android:fillColor="#FFFFFF"
         android:pathData="M48,43.5L48,64.5Q48,67 50.2,65.8L65,57.2Q67.2,56 65,54.8L50.2,46.2Q48,45 48,43.5z" />
-    <!-- cut line -->
-    <path
-        android:fillColor="#1B1915"
-        android:pathData="M38,62L44,58L45,59.6L39,63.6z" />
 </vector>
