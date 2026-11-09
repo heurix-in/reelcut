@@ -1,0 +1,478 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :composeApp
+w: Kotlin Multiplatform <-> Android Gradle Plugin compatibility issue:
+The applied Android Gradle Plugin version (8.7.3) is higher 
+than the maximum known to the Kotlin Gradle Plugin.
+Tooling stability in such configuration isn't tested, please report encountered issues to https://kotl.in/issue
+
+Minimum supported Android Gradle Plugin version: 7.1
+Maximum tested Android Gradle Plugin version: 8.5
+
+To suppress this message add 'kotlin.mpp.androidGradlePluginCompatibility.nowarn=true' to your gradle.properties
+
+
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForCommonMain SKIPPED
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :composeApp:generateComposeResClass SKIPPED
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :composeApp:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidDebug SKIPPED
+> Task :composeApp:preBuild UP-TO-DATE
+> Task :composeApp:preDebugBuild UP-TO-DATE
+> Task :composeApp:generateDebugResValues
+> Task :composeApp:checkDebugAarMetadata
+> Task :composeApp:mapDebugSourceSetPaths
+> Task :composeApp:generateDebugResources
+> Task :composeApp:packageDebugResources
+> Task :composeApp:mergeDebugResources
+> Task :composeApp:createDebugCompatibleScreenManifests
+> Task :composeApp:extractDeepLinksDebug
+> Task :composeApp:parseDebugLocalResources
+> Task :composeApp:processDebugMainManifest
+> Task :composeApp:processDebugManifest
+> Task :composeApp:javaPreCompileDebug
+> Task :composeApp:convertXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidUnitTest NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidUnitTest SKIPPED
+> Task :composeApp:convertXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidUnitTestDebug SKIPPED
+> Task :composeApp:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :composeApp:processDebugManifestForPackage
+> Task :composeApp:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForCommonTest SKIPPED
+> Task :composeApp:preDebugUnitTestBuild UP-TO-DATE
+> Task :composeApp:preReleaseBuild UP-TO-DATE
+> Task :composeApp:javaPreCompileDebugUnitTest
+> Task :composeApp:mergeReleaseJniLibFolders
+> Task :composeApp:mergeReleaseNativeLibs
+> Task :composeApp:buildKotlinToolingMetadata
+> Task :composeApp:checkReleaseDuplicateClasses
+> Task :composeApp:convertXmlValueResourcesForAndroidRelease NO-SOURCE
+
+> Task :composeApp:stripReleaseDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so.
+
+> Task :composeApp:copyNonXmlValueResourcesForAndroidRelease NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidRelease NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidRelease SKIPPED
+> Task :composeApp:extractReleaseNativeSymbolTables
+> Task :composeApp:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :composeApp:generateReleaseResValues
+> Task :composeApp:checkReleaseAarMetadata
+> Task :composeApp:mapReleaseSourceSetPaths
+> Task :composeApp:generateReleaseResources
+> Task :composeApp:processDebugResources
+> Task :composeApp:mergeReleaseResources
+> Task :composeApp:packageReleaseResources
+> Task :composeApp:createReleaseCompatibleScreenManifests
+> Task :composeApp:parseReleaseLocalResources
+> Task :composeApp:extractDeepLinksRelease
+> Task :composeApp:processReleaseMainManifest
+> Task :composeApp:processReleaseManifest
+> Task :composeApp:processReleaseManifestForPackage
+> Task :composeApp:javaPreCompileRelease
+> Task :composeApp:desugarReleaseFileDependencies
+> Task :composeApp:mergeReleaseStartupProfile
+> Task :composeApp:mergeReleaseArtProfile
+> Task :composeApp:processReleaseResources
+> Task :composeApp:mergeReleaseShaders
+> Task :composeApp:compileReleaseShaders NO-SOURCE
+> Task :composeApp:copyReleaseComposeResourcesToAndroidAssets
+> Task :composeApp:generateReleaseAssets UP-TO-DATE
+> Task :composeApp:releaseAssetsCopyForAGP NO-SOURCE
+> Task :composeApp:mergeReleaseAssets
+> Task :composeApp:mergeExtDexRelease
+> Task :composeApp:compressReleaseAssets
+> Task :composeApp:extractReleaseVersionControlInfo
+> Task :composeApp:collectReleaseDependencies
+> Task :composeApp:sdkReleaseDependencyData
+> Task :composeApp:optimizeReleaseResources
+> Task :composeApp:validateSigningRelease
+> Task :composeApp:writeReleaseAppMetadata
+> Task :composeApp:writeReleaseSigningConfigVersions
+> Task :composeApp:compileDebugKotlinAndroid
+> Task :composeApp:compileReleaseKotlinAndroid
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/androidMain/kotlin/com/reelcut/app/media/CompositionBuilder.kt:98:39 'constructor(p0: (MutableList<EditedMediaItem>..List<EditedMediaItem>)): EditedMediaItemSequence' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/androidMain/kotlin/com/reelcut/app/media/CompositionBuilder.kt:130:13 'constructor(p0: (MutableList<EditedMediaItem>..List<EditedMediaItem>)): EditedMediaItemSequence' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/AudioPanels.kt:83:67 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/AudioPanels.kt:83:96 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:592:32 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:701:46 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:701:75 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/Phase2Panels.kt:130:35 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/Phase2Panels.kt:167:39 'val Icons.Rounded.RotateRight: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.RotateRight.
+
+> Task :composeApp:compileReleaseJavaWithJavac NO-SOURCE
+
+> Task :composeApp:compileDebugKotlinAndroid
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/androidMain/kotlin/com/reelcut/app/media/CompositionBuilder.kt:98:39 'constructor(p0: (MutableList<EditedMediaItem>..List<EditedMediaItem>)): EditedMediaItemSequence' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/androidMain/kotlin/com/reelcut/app/media/CompositionBuilder.kt:130:13 'constructor(p0: (MutableList<EditedMediaItem>..List<EditedMediaItem>)): EditedMediaItemSequence' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/AudioPanels.kt:83:67 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/AudioPanels.kt:83:96 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:592:32 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:701:46 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:701:75 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/Phase2Panels.kt:130:35 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///home/runner/work/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/Phase2Panels.kt:167:39 'val Icons.Rounded.RotateRight: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.RotateRight.
+
+> Task :composeApp:dexBuilderRelease
+> Task :composeApp:compileDebugJavaWithJavac NO-SOURCE
+> Task :composeApp:bundleDebugClassesToCompileJar
+> Task :composeApp:processDebugJavaRes
+> Task :composeApp:bundleDebugClassesToRuntimeJar
+> Task :composeApp:mergeReleaseGlobalSynthetics
+> Task :composeApp:processReleaseJavaRes
+> Task :composeApp:mergeReleaseJavaResource
+> Task :composeApp:compileDebugUnitTestKotlinAndroid
+> Task :composeApp:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :composeApp:processDebugUnitTestJavaRes
+
+> Task :composeApp:testDebugUnitTest
+
+AnimMathTest > animationSettingsSurviveSavingAndOldOverlaysHaveNone PASSED
+
+AnimMathTest > slidingOutMovesInTheNamedDirectionAndEndsAway PASSED
+
+AnimMathTest > onlyTheEndThatIsAnimatedChanges PASSED
+
+AnimMathTest > fadeRampsLinearlyInAndOut PASSED
+
+AnimMathTest > popGrowsInAndShrinksOutAboutItsCentre PASSED
+
+AnimMathTest > slidingInMovesInTheNamedDirectionAndSettlesAtRest PASSED
+
+AnimMathTest > aShortOverlayGivesEachAnimationHalfItsTime PASSED
+
+AnimMathTest > theSameOverlayAnimatesTheSameWayThroughTheOverlayHelper PASSED
+
+AnimMathTest > noAnimationIsAlwaysAtRest PASSED
+
+AudioMathTest > gainFollowsVolumeAndFades PASSED
+
+AudioMathTest > fitCutsAtVideoEndAndDropsLateClips PASSED
+
+AudioMathTest > fitKeepsFadeOutAtTheCut PASSED
+
+AudioMathTest > lanesStackOnlyWhenOverlapping PASSED
+
+AudioMathTest > fadesNeverExceedClip PASSED
+
+AudioMathTest > placeAtKeepsSomethingAudible PASSED
+
+AudioMathTest > normaliseKeepsTrimStartAndVolumeInRange PASSED
+
+CanvasMathTest > originalFollowsFirstClip PASSED
+
+CanvasMathTest > fixedAspects PASSED
+
+CanvasMathTest > speedChangesTimelineDuration PASSED
+
+CanvasMathTest > fitAndFill PASSED
+
+LookMathTest > brightnessShiftsEverythingUpAndWhiteStaysWhite PASSED
+
+LookMathTest > theComposeColourMatrixGivesTheSameColours PASSED
+
+LookMathTest > theAndroidRgbMatrixGivesTheSameColours PASSED
+
+LookMathTest > valuesOutsideTheRangeAreHeldInside PASSED
+
+LookMathTest > contrastStretchesAroundMidGrey PASSED
+
+LookMathTest > aLookSurvivesSavingAndLoading PASSED
+
+LookMathTest > theLookupTableHoldsTheSameColoursOnItsGrid PASSED
+
+LookMathTest > noLookLeavesEveryColourAlone PASSED
+
+LookMathTest > presetsAreDistinctRealLooks PASSED
+
+LookMathTest > fullDesaturationGivesGreyOfTheSameBrightness PASSED
+
+LookMathTest > aClipFromAnOlderBuildHasNoLook PASSED
+
+LookMathTest > saturationNeverTintsGrey PASSED
+
+LookMathTest > warmthAddsRedAndTakesAwayBlue PASSED
+
+OverlayMathTest > clampKeepsMinimumLength PASSED
+
+OverlayMathTest > newRangeStaysInsideVideo PASSED
+
+OverlayMathTest > lanesStackOnlyWhenOverlapping PASSED
+
+OverlayMathTest > visibility PASSED
+
+OverlayModelTest > theOriginalFourFontsKeepTheirNamesAndTheNewOnesComeAfterThem PASSED
+
+OverlayModelTest > styleFieldsSurviveSavingAndLoading PASSED
+
+OverlayModelTest > aFontThisBuildDoesNotKnowFallsBackToTheDefaultInsteadOfLosingTheProject PASSED
+
+OverlayModelTest > aTextBoxFromAnOlderBuildOpensWithPlainStyle PASSED
+
+ProjectRepositoryTest > fieldsFromANewerBuildAreIgnored PASSED
+
+ProjectRepositoryTest > aFileThatBecomesReadableLeavesTheUnreadableList PASSED
+
+ProjectRepositoryTest > aSaveInProgressIsNotCutShortByCancellation PASSED
+
+ProjectRepositoryTest > projectsAreListedNewestEditFirst PASSED
+
+ProjectRepositoryTest > anUnknownChoiceFallsBackToTheDefaultInsteadOfLosingTheProject PASSED
+
+ProjectRepositoryTest > deleteRemovesTheProject PASSED
+
+ProjectRepositoryTest > aFailedSaveThrowsAndKeepsTheListAsItWas PASSED
+
+ProjectRepositoryTest > projectFromAnOlderBuildOpensWithDefaults PASSED
+
+ProjectRepositoryTest > aBrokenFileIsReportedNotHiddenAndLeftUntouched PASSED
+
+ProjectRepositoryTest > savedProjectComesBackIdentical PASSED
+
+ProjectRepositoryTest > duplicateGetsNewIdsAndLeavesTheOriginalAlone PASSED
+
+TimelineTest > splitKeepsTotalDuration PASSED
+
+TimelineTest > deleteDuplicateMove PASSED
+
+TimelineTest > insertAtPosition PASSED
+
+TimelineTest > splitRefusedNearEdge PASSED
+
+TimelineTest > locateInsideAndAtEdges PASSED
+
+TimelineTest > totalAndStarts PASSED
+
+TimelineTest > trimClamps PASSED
+
+VoiceCleanupTest > deletingAProjectRemovesItsVoiceFilesButNotItsMusic PASSED
+
+VoiceCleanupTest > deletingAMissingProjectRemovesNothing PASSED
+
+VoiceCleanupTest > aRecordingSharedWithADuplicateStaysUntilTheLastProjectGoes PASSED
+
+VoiceCleanupTest > withoutAVoiceFolderDeleteStillWorks PASSED
+
+VoiceCleanupTest > aFileThatCannotBeRemovedDoesNotStopTheDelete PASSED
+
+VoiceCleanupTest > nothingIsRemovedWhileAProjectCannotBeRead PASSED
+
+EditorViewModelTest > aVoiceOverPlaysTheVideoSilentlyAndLandsWhereRecordingBegan PASSED
+
+EditorViewModelTest > theTickerFollowsThePreviewWhilePlaying PASSED
+
+EditorViewModelTest > anUnexpectedExportErrorGetsAPlainMessage PASSED
+
+EditorViewModelTest > clipsWhoseFileIsGoneAreMarkedMissingAndNotPlayed PASSED
+
+EditorViewModelTest > audioEditsAreHeldInsideTheirLimitsAndCanBeDeleted PASSED
+
+EditorViewModelTest > autosaveWaitsHalfASecondAfterTheLastEditAndWritesOnce PASSED
+
+EditorViewModelTest > aFinishedExportCanBeResetToIdle PASSED
+
+> Task :composeApp:mergeDexRelease
+
+> Task :composeApp:testDebugUnitTest
+
+EditorViewModelTest > anEmptyProjectCannotBePlayed PASSED
+
+EditorViewModelTest > audioAddedInThePanelIsOneUndoStepOnDone PASSED
+
+EditorViewModelTest > aFailedExportShowsTheReason PASSED
+
+EditorViewModelTest > nothingIsExportedFromAnEmptyProject PASSED
+
+EditorViewModelTest > importingNothingAddsNoUndoStep PASSED
+
+EditorViewModelTest > aNewEditAfterUndoClearsRedo PASSED
+
+EditorViewModelTest > exportRunsThenReportsWhereTheFileWasSaved PASSED
+
+EditorViewModelTest > theNextVoiceOverIsNumberedAfterTheOnesAlreadyThere PASSED
+
+EditorViewModelTest > anEditThatChangesNothingIsNotAnUndoStep PASSED
+
+EditorViewModelTest > moveReordersClipsAndUndoPutsThemBack PASSED
+
+EditorViewModelTest > severalSoundsGoOneAfterAnother PASSED
+
+EditorViewModelTest > aPresetSetsTheLookAndRemembersWhichOne PASSED
+
+EditorViewModelTest > audioCannotBeAddedToAnEmptyProject PASSED
+
+EditorViewModelTest > cancelRestoresTheProjectAndLeavesNoUndoStep PASSED
+
+EditorViewModelTest > aLogoFromSomethingThatIsNotAPictureFails PASSED
+
+EditorViewModelTest > addClipsInsertsAtTheGivenPlace PASSED
+
+EditorViewModelTest > aFailedAutosaveIsReportedAndTheNextGoodOneClearsIt PASSED
+
+EditorViewModelTest > blankFrameThatCannotBeMadeReportsFalse PASSED
+
+EditorViewModelTest > aStickerIsABigEmojiTextOpenedForEditing PASSED
+
+EditorViewModelTest > recordingFailsCleanlyWhenTheMicrophoneCannotBeOpened PASSED
+
+EditorViewModelTest > selectingTheSelectedClipAgainDeselectsIt PASSED
+
+EditorViewModelTest > applyToAllGivesEveryClipTheSameFilter PASSED
+
+EditorViewModelTest > extractingActsOnTheClipUnderThePlayheadWhenNothingIsSelected PASSED
+
+EditorViewModelTest > textCannotBeAddedToAnEmptyProject PASSED
+
+EditorViewModelTest > aPanelWithoutAClipDoesNotOpenExceptCanvas PASSED
+
+EditorViewModelTest > soundCannotBeExtractedFromPhotosSilentClipsMutedClipsOrSpedUpClips PASSED
+
+EditorViewModelTest > editsUpdateTheModifiedTime PASSED
+
+EditorViewModelTest > leavingThePanelWhileRecordingCancelsTheRecording PASSED
+
+EditorViewModelTest > trimIsClampedAndAppliedAsOneUndoStep PASSED
+
+EditorViewModelTest > onlySoundsThatCanStillBeOpenedAreExported PASSED
+
+EditorViewModelTest > undoKeepsTheLast50StepsOnly PASSED
+
+EditorViewModelTest > cancellingAFilterRestoresTheClip PASSED
+
+EditorViewModelTest > blankFrameIsAddedAtThePlayheadAndSelected PASSED
+
+EditorViewModelTest > opensTheProjectAndGivesItsClipsToThePreview PASSED
+
+EditorViewModelTest > aTextAnimationIsPartOfTheSameUndoStepAsTheRestOfTheTextEdit PASSED
+
+EditorViewModelTest > trimOnAPhotoOpensItsLengthPanelInstead PASSED
+
+EditorViewModelTest > insertGoesToTheNearerEdgeOfTheClipUnderThePlayhead PASSED
+
+EditorViewModelTest > recordingFromTheEndOfTheVideoStartsAtTheBeginning PASSED
+
+EditorViewModelTest > seekStaysInsideTheVideo PASSED
+
+EditorViewModelTest > applyToAllChangesEveryClip PASSED
+
+EditorViewModelTest > cancellingTrimChangesNothing PASSED
+
+EditorViewModelTest > sliderValuesAreHeldInsideTheirRange PASSED
+
+EditorViewModelTest > speedVolumeAndPhotoLengthAreHeldInsideTheirLimits PASSED
+
+EditorViewModelTest > aProjectThatDoesNotExistReportsLoadFailed PASSED
+
+EditorViewModelTest > cancellingARecordingDiscardsItAndRestoresTheSound PASSED
+
+EditorViewModelTest > extractingSoundMakesItItsOwnSoundAndSilencesTheClip PASSED
+
+EditorViewModelTest > deleteRemovesTheSelectedClipAndClearsTheSelection PASSED
+
+EditorViewModelTest > aRecordingThatCameOutTooShortAddsNothing PASSED
+
+EditorViewModelTest > deletingTheOpenOverlayRemovesItAsOneUndoStep PASSED
+
+EditorViewModelTest > stickersCannotBeAddedToAnEmptyProject PASSED
+
+EditorViewModelTest > aLogoFromAPictureIsAddedOverTheWholeVideo PASSED
+
+EditorViewModelTest > theFilterPanelNeedsAClip PASSED
+
+EditorViewModelTest > cancellingStopsTheEngineAndReturnsToIdle PASSED
+
+EditorViewModelTest > aTextBoxWithTextIsKeptAsOneUndoStep PASSED
+
+EditorViewModelTest > stickersNeedAVideoAndAnEmoji PASSED
+
+EditorViewModelTest > playingFromTheEndStartsOver PASSED
+
+EditorViewModelTest > panelChangesShowAtOnceButAreNotUndoStepsOrSavedUntilDone PASSED
+
+EditorViewModelTest > duplicateInsertsACopyRightAfterTheClip PASSED
+
+EditorViewModelTest > rotateCyclesThroughFourQuarterTurns PASSED
+
+EditorViewModelTest > musicIsPlacedAtThePlayheadAndOnlyTheAudibleStretchGoesToThePreview PASSED
+
+EditorViewModelTest > anEmptyNewTextBoxIsDroppedOnDone PASSED
+
+EditorViewModelTest > doneKeepsAllPanelChangesAsASingleUndoStep PASSED
+
+EditorViewModelTest > splitTooCloseToAClipEdgeDoesNothing PASSED
+
+EditorViewModelTest > startingAnExportWhileOneRunsIsIgnored PASSED
+
+EditorViewModelTest > muteTogglesTheOriginalSoundInThePreview PASSED
+
+EditorViewModelTest > cancellingANewTextBoxRemovesIt PASSED
+
+EditorViewModelTest > anOverlaysTimeRangeIsKeptInsideTheVideo PASSED
+
+EditorViewModelTest > withNothingSelectedTheToolsActOnTheClipUnderThePlayhead PASSED
+
+EditorViewModelTest > splitCutsTheClipUnderThePlayheadAndUndoRedoStepsThroughIt PASSED
+
+EditorViewModelTest > aFilterIsAPanelEditThatCountsOnceOnDone PASSED
+
+FileProjectStoreTest > aFileThatCannotBeReadIsStillListedSoItIsNotHidden PASSED
+
+FileProjectStoreTest > readingAMissingProjectGivesNull PASSED
+
+FileProjectStoreTest > readAllListsEveryProjectFileWithItsId PASSED
+
+FileProjectStoreTest > aFailedWriteLeavesNoTempFileAndThrows PASSED
+
+FileProjectStoreTest > overwritingReplacesTheFileAndLeavesNoTempFile PASSED
+
+FileProjectStoreTest > writeThenReadReturnsTheText PASSED
+
+FileProjectStoreTest > deleteRemovesTheFileAndAnyTempFile PASSED
+
+FileProjectStoreTest > aLeftoverTempFileNextToItsProjectIsDiscarded PASSED
+
+FileProjectStoreTest > aFinishedTempFileWithoutItsProjectIsPutBack PASSED
+
+VoiceFolderTest > leavesFilesOutsideTheVoiceFolderAlone PASSED
+
+VoiceFolderTest > ignoresFilesInSubfoldersAndMissingFiles PASSED
+
+VoiceFolderTest > deletesARecordingGivenByPath PASSED
+
+VoiceFolderTest > deletesARecordingGivenAsAFileUri PASSED
+
+VoiceFolderTest > cannotBeTrickedIntoLeavingTheFolderWithDotDot PASSED
+
+> Task :composeApp:compileReleaseArtProfile
+> Task :composeApp:packageRelease
+> Task :composeApp:createReleaseApkListingFileRedirect
+> Task :composeApp:assembleRelease
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1794253652225.json
+[Incubating] Problems report is available at: file:///home/runner/work/reelcut/reelcut/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 1m 32s
+66 actionable tasks: 66 executed

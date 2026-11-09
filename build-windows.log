@@ -1,0 +1,64 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :composeApp
+w: Kotlin Multiplatform <-> Android Gradle Plugin compatibility issue:
+The applied Android Gradle Plugin version (8.7.3) is higher 
+than the maximum known to the Kotlin Gradle Plugin.
+Tooling stability in such configuration isn't tested, please report encountered issues to https://kotl.in/issue
+
+Minimum supported Android Gradle Plugin version: 7.1
+Maximum tested Android Gradle Plugin version: 8.5
+
+To suppress this message add 'kotlin.mpp.androidGradlePluginCompatibility.nowarn=true' to your gradle.properties
+
+
+> Task :downloadWix
+Download https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip
+
+> Task :composeApp:checkRuntime
+> Task :unzipWix
+> Task :composeApp:createRuntimeImage
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForCommonMain SKIPPED
+> Task :composeApp:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForDesktopMain SKIPPED
+> Task :composeApp:generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :composeApp:generateComposeResClass SKIPPED
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :composeApp:assembleDesktopMainResources
+> Task :composeApp:desktopProcessResources
+> Task :composeApp:prepareAppResources NO-SOURCE
+> Task :composeApp:unpackDefaultComposeDesktopJvmApplicationResources
+> Task :composeApp:compileKotlinDesktop
+w: file:///D:/a/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/AudioPanels.kt:83:67 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///D:/a/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/AudioPanels.kt:83:96 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///D:/a/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:592:32 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///D:/a/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:701:46 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///D:/a/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/EditorScreen.kt:701:75 'val Icons.Rounded.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeUp.
+w: file:///D:/a/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/Phase2Panels.kt:130:35 'val Icons.Rounded.VolumeOff: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.VolumeOff.
+w: file:///D:/a/reelcut/reelcut/composeApp/src/commonMain/kotlin/com/reelcut/app/ui/editor/Phase2Panels.kt:167:39 'val Icons.Rounded.RotateRight: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.RotateRight.
+
+> Task :composeApp:desktopMainClasses
+> Task :composeApp:desktopJar
+> Task :composeApp:packageExe
+The distribution is written to D:\a\reelcut\reelcut\composeApp\build\compose\binaries\main\exe\Reelcut-1.0.15.exe
+
+> Task :composeApp:createDistributable
+The distribution is written to D:\a\reelcut\reelcut\composeApp\build\compose\binaries\main\app
+gradle/actions: Writing build results to D:\a\_temp\.gradle-actions\build-results\__run_3-1794253662690.json
+[Incubating] Problems report is available at: file:///D:/a/reelcut/reelcut/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 2m 12s
+11 actionable tasks: 11 executed
